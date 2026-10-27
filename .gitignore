@@ -1,0 +1,11 @@
+# artefactos de build
+build/
+*.o
+*.a
+
+# WASM reconstruible (el precompilado SÍ se publica en docs/wasm/)
+# regenerarlo: make wasm  (requiere zig; ver README)
+
+# sistema
+.DS_Store
+Thumbs.db

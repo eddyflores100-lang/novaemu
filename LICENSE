@@ -1,0 +1,29 @@
+MIT License
+
+Copyright (c) 2026 NovaEmu contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+Atribuciones de terceros:
+- ROMs de test Game Boy: Shawn "blargg" (gb-test-roms), Matt Currie (dmg-acid2,
+  MIT). Ver tests/roms/SOURCES.md.
+- Suite CHIP-8: Timendus (chip8-test-suite, GPL-3.0; no se redistribuye en este
+  paquete si su licencia lo restringe; ver SOURCES.md).
+- DAA del núcleo Game Boy transcrito de la semántica verificada de SameBoy
+  (gekkio, BSD-2) documentada en docs/TECHNIQUES.md.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
