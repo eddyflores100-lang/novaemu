@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NovaEmu — emulador CHIP-8 / S-CHIP / Game Boy en C99 y WASM</title>
+<meta name="description" content="Emulador unificado CHIP-8/S-CHIP/Game Boy: C99 puro, 0 dependencias, 38 KB de binario, CPU SM83 certificada 11/11 contra la suite Blargg. Pruébalo en tu navegador con el mismo motor compilado a WASM.">
+<link rel="stylesheet" href="./assets/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/><rect x='62' y='30' width='16' height='16' fill='%2334d399'/><rect x='22' y='54' width='56' height='8' fill='%2310b981'/><rect x='32' y='70' width='36' height='8' fill='%2334d399'/></svg>">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="./index.html">Nova<b>Emu</b></a>
+  <nav>
+    <a href="./index.html" class="active">Inicio</a>
+    <a href="./demo.html">Demo completa</a>
+    <a href="./tests.html">Banco de pruebas</a>
+    <a href="./dev.html">Docs</a>
+    <a href="#" data-gh>GitHub ↗</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1>Nova<span>Emu</span></h1>
+    <p class="lead">Emulador unificado <strong>CHIP-8 / S-CHIP / Game Boy</strong> en C99 puro:
+      cero dependencias, headless-determinista y con la CPU SM83 <strong>certificada 11/11
+      contra la suite completa de Blargg</strong>. Abajo lo tienes corriendo <em>en tu navegador</em>
+      con el mismo motor compilado a WebAssembly.</p>
+    <div class="badges">
+      <span class="badge green">✓ Blargg 12/12 (WASM)</span>
+      <span class="badge green">✓ 117 tests unitarios</span>
+      <span class="badge green">✓ evals NE-E001..E012 ALL_PASS</span>
+      <span class="badge amber">binario 38 KB</span>
+      <span class="badge amber">wasm 24,7 KB</span>
+      <span class="badge">C99 · 0 dependencias</span>
+    </div>
+    <div class="controls" style="justify-content:center">
+      <a class="btn primary" href="#consola">▶ Probar ahora</a>
+      <a class="btn" href="./tests.html">Banco de pruebas</a>
+      <a class="btn" href="#" data-gh>Código fuente</a>
+    </div>
+  </section>
+
+  <!-- CONSOLA EMBEBIDA -->
+  <section class="block" id="consola">
+    <h2>Consola en vivo</h2>
+    <p class="sub">El navegador ejecuta <strong>exactamente el mismo código C99</strong> que pasó los evals nativos —
+      no es un port, es el motor compilado a WASM (equivalencia verificada bit a bit). Elige una demo y dale a Play.</p>
+
+    <div class="grid cols-2" id="nova-console">
+      <div class="panel">
+        <div class="screen-frame" data-drop>
+          <canvas data-screen width="64" height="32" aria-label="Pantalla del emulador"></canvas>
+        </div>
+        <div class="controls">
+          <button data-play class="primary">▶ Play</button>
+          <button data-reset>↺ Reset</button>
+          <button data-step>⏭ Paso</button>
+          <button data-frame>⏭ Frame</button>
+        </div>
+        <div class="statusline">Estado: <span data-status>cargando WASM…</span></div>
+        <div class="statusline">ROM: <span data-rom-name style="color:var(--fg)">(ninguna)</span></div>
+        <div class="rom-note" data-rom-note></div>
+      </div>
+
+      <div class="panel">
+        <h3>ROMs incluidas (deterministas)</h3>
+        <div data-catalog style="display:flex;flex-direction:column;gap:8px">
+          <button data-rom="chip8-bounce">chip8_bounce — pelota 64×32 <span class="mono" style="color:var(--fg-dim);font-size:11px">golden 28c31cf8…</span></button>
+          <button data-rom="chip8-scroller">chip8_scroller — marquesina DEADCODE</button>
+          <button data-rom="schip-bounce">schip_bounce — pelota 128×64 <span class="mono" style="color:var(--fg-dim);font-size:11px">golden 96b4fc93…</span></button>
+        </div>
+        <h3 style="margin-top:16px">Telemetría</h3>
+        <div class="telemetry">
+          <div class="tele"><div class="l">FPS</div><div class="v" data-fps>—</div></div>
+          <div class="tele"><div class="l">Frames</div><div class="v" data-frames>0</div></div>
+          <div class="tele"><div class="l">Hash FNV-1a</div><div class="v" data-hash>—</div></div>
+          <div class="tele"><div class="l">Trabajo</div><div class="v" data-ops>—</div></div>
+        </div>
+        <div class="tele" style="margin-top:8px" data-golden-wrap>
+          <div class="l">Golden test</div><div class="v" data-golden>carga una demo con golden</div>
+        </div>
+        <p style="margin-top:14px">¿Quieres paletas, quirks por juego, pad táctil y carga de tus propias ROMs?
+        <a href="./demo.html">Abre la consola completa →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MÉTRICAS -->
+  <section class="block">
+    <h2>Métricas medidas, no prometidas</h2>
+    <p class="sub">Todo lo que dice el README está verificado por la suite de evaluación con evidencia hasheada.</p>
+    <div class="grid cols-4">
+      <div class="panel stat"><div class="v">38 KB</div><div class="l">binario nativo (-O2, sin deps)</div></div>
+      <div class="panel stat"><div class="v">24,7 KB</div><div class="l">módulo WASM bit-exacto</div></div>
+      <div class="panel stat"><div class="v">2,97M</div><div class="l">fps headless CHIP-8</div></div>
+      <div class="panel stat"><div class="v">3.623</div><div class="l">fps Game Boy DMG</div></div>
+      <div class="panel stat"><div class="v">11/11</div><div class="l">Blargg cpu_instrs nativo</div></div>
+      <div class="panel stat"><div class="v">12/12</div><div class="l">Blargg en WASM (navegador)</div></div>
+      <div class="panel stat"><div class="v">117</div><div class="l">checks unitarios</div></div>
+      <div class="panel stat"><div class="v">2×</div><div class="l">SHA-256 idéntico (determinismo)</div></div>
+    </div>
+  </section>
+
+  <!-- CÓMO FUNCIONA -->
+  <section class="block">
+    <h2>¿Cómo funciona esta página?</h2>
+    <p class="sub">Tres pasos entre el C99 certificado y tu navegador:</p>
+    <div class="grid cols-3">
+      <div class="panel">
+        <h3>1 · Núcleos C99 certificados</h3>
+        <p><code>src/chip8/</code> y <code>src/gb/</code> son los mismos ficheros que compilan el binario
+        nativo de 38 KB. Pasaron 117 tests unitarios, 12 evals con evidencia y la suite Blargg completa.</p>
+      </div>
+      <div class="panel">
+        <h3>2 · Compilación a wasm32-wasi</h3>
+        <p><code>zig cc -target wasm32-wasi -mexec-model=reactor</code> compila los núcleos sin tocar
+        una línea. Un shim (<code>src/wasm/wasm_api.c</code>) exporta <code>c8w_*</code> / <code>gbw_*</code>
+        y aloja las ROMs con un allocator propio (<code>nova_alloc</code> + <code>memory.grow</code>).</p>
+      </div>
+      <div class="panel">
+        <h3>3 · El mismo motor en tu navegador</h3>
+        <p>Este sitio carga <code>docs/wasm/novaemu.wasm</code> (24,7 KB) con la API estándar de WebAssembly.
+        La equivalencia nativo↔WASM se demostró con traces de instrucciones y goldens idénticos
+        (<code>28c31cf8…</code>, <code>96b4fc93…</code>).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARACTERÍSTICAS -->
+  <section class="block">
+    <h2>Qué trae</h2>
+    <div class="grid cols-3">
+      <div class="panel">
+        <h3>CPU SM83 certificada</h3>
+        <p>256 opcodes + CB completos, DAA transcrito literal de SameBoy, timer de flanco
+        (comportamiento post-2020), HALT/EI con retardo de IME y suite Blargg completa en verde.</p>
+      </div>
+      <div class="panel">
+        <h3>CHIP-8 con quirks por juego</h3>
+        <p>7 comportamientos conmutables (vf_reset, shift, loadstore, clip, FX1E, BNNN, DXY1)
+        con presets VIP y S-CHIP moderno heredados del propio C.</p>
+      </div>
+      <div class="panel">
+        <h3>Determinismo verificable</h3>
+        <p>RNG de semilla fija, bucle con deadline absoluto anti-deriva y hash FNV-1a-64 del
+        framebuffer: dos pasadas producen SHA-256 idéntico. Cada demo tiene golden hash.</p>
+      </div>
+      <div class="panel">
+        <h3>Verificación de verdad</h3>
+        <p>«El mejor fuzzer de un emulador es la suite de test ROMs real» (L2). Los 4 bugs que
+        Blargg cazó no los vio ninguno de los 117 unitarios.</p>
+      </div>
+      <div class="panel">
+        <h3>Perfiles para PC viejas</h3>
+        <p>Configuración por hardware (weak / ancient / pi4) aprendida de RPCS3/Xenia: el mismo
+        binario sirve desde una Raspberry hasta una estación de trabajo.</p>
+      </div>
+      <div class="panel">
+        <h3>Puerto serie GB visible</h3>
+        <p>La salida de Blargg viaja por el link serie: el panel lo captura y muestra el veredicto
+        «Passed» en vivo — el mismo mecanismo que usa el banco de pruebas de este sitio.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOCS -->
+  <section class="block">
+    <h2>Documentación</h2>
+    <p class="sub">Seis documentos nacidos del proceso (con rutas verificadas a los repos que sirvieron de fuente):</p>
+    <div class="grid cols-3">
+      <a class="panel" href="./dev.html?doc=ARQUITECTURA" style="color:inherit;text-decoration:none"><h3>Arquitectura</h3><p>8 decisiones de diseño y su origen en los grandes emuladores.</p></a>
+      <a class="panel" href="./dev.html?doc=TECNICAS" style="color:inherit;text-decoration:none"><h3>Técnicas</h3><p>24 técnicas de RPCS3, shadPS4, xemu y Xenia con cita verificada.</p></a>
+      <a class="panel" href="./dev.html?doc=RESEARCH_PS5_XBOX" style="color:inherit;text-decoration:none"><h3>Research PS5/Xbox</h3><p>Por qué la gen 9 sigue sin emulador (matriz 2026 con fuentes).</p></a>
+      <a class="panel" href="./dev.html?doc=GUIA_PC_VIEJAS" style="color:inherit;text-decoration:none"><h3>Guía PC viejas</h3><p>Medidas reales y 3 rutas honestas para hardware humilde.</p></a>
+      <a class="panel" href="./dev.html?doc=ROADMAP" style="color:inherit;text-decoration:none"><h3>Roadmap</h3><p>v1.1 → v3.0 con verificación por escalón, sin promesas vacías.</p></a>
+      <a class="panel" href="./dev.html?doc=INFORME_FINAL" style="color:inherit;text-decoration:none"><h3>Informe final</h3><p>7 lecciones (L1–L7) del proceso de construcción nocturno.</p></a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  NovaEmu v1.0 · MIT · construido de noche tomando lo mejor de
+  RPCS3, shadPS4, xemu y Xenia — con evidencia verificada y cero promesas vacías.
+  <br><a href="#" data-gh>Repositorio</a> · <a href="./tests.html">Verificar este build en tu navegador</a>
+</footer>
+
+<script type="module">
+  import { ConsoleUI } from "./assets/console.js";
+  import "./assets/site.js";
+  const ui = new ConsoleUI(document.getElementById("nova-console"), { compact: true });
+  ui.boot().then(() => ui.loadFromCatalog({ id: "chip8-bounce", name: "chip8_bounce", system: "chip8", url: "./assets/roms/chip8_bounce.ch8",
+    golden: { frames: 300, hash: "28c31cf8df2ec325" }, note: "Demo sintetizada, determinista (RNG semilla fija 0x1EE7BEEF)" }));
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco de pruebas — NovaEmu</title>
+<meta name="description" content="Verifica el build de NovaEmu en tu navegador: 2 goldens bit-exacto, determinismo y la suite Blargg completa (12 ROMs) leyendo el veredicto del puerto serie.">
+<link rel="stylesheet" href="./assets/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/><rect x='62' y='30' width='16' height='16' fill='%2334d399'/><rect x='22' y='54' width='56' height='8' fill='%2310b981'/><rect x='32' y='70' width='36' height='8' fill='%2334d399'/></svg>">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="./index.html">Nova<b>Emu</b></a>
+  <nav>
+    <a href="./index.html">Inicio</a>
+    <a href="./demo.html">Demo completa</a>
+    <a href="./tests.html" class="active">Banco de pruebas</a>
+    <a href="./dev.html">Docs</a>
+    <a href="#" data-gh>GitHub ↗</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="hero" style="padding:34px 0 10px;text-align:left">
+    <h1 style="font-size:clamp(26px,4vw,38px)">Banco de <span>pruebas</span></h1>
+    <p class="lead" style="margin-bottom:0">15 checks que verifican <em>este build exacto</em> en <em>tu navegador</em>:
+      2 goldens bit-exacto (evals NE-E003/E004), determinismo de doble pasada y la suite Blargg
+      cpu_instrs completa leyendo el veredicto real del <strong>puerto serie</strong> del Game Boy.</p>
+  </section>
+
+  <section class="block">
+    <div class="panel">
+      <div class="controls">
+        <button id="run" class="primary">▶ Ejecutar los 15 tests</button>
+        <span id="summary" class="mono" style="font-size:13.5px;color:var(--fg-dim)">sin ejecutar</span>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+      <div id="rows">
+        <div class="test-row"><span class="res">·</span><span class="name" style="color:var(--fg-dim)">Pulsa «Ejecutar» — todo corre en tu máquina, sin servidor.</span></div>
+      </div>
+    </div>
+
+    <div class="grid cols-3" style="margin-top:16px">
+      <div class="panel">
+        <h3>¿Qué verifica el golden?</h3>
+        <p>Cada demo determinista tiene un hash FNV-1a-64 del framebuffer capturado en el frame 300
+        por el binario <strong>nativo</strong>. Si el WASM reproduce ese hash bit a bit, tu navegador
+        ejecuta el mismo motor certificado.</p>
+      </div>
+      <div class="panel">
+        <h3>¿Qué verifica Blargg?</h3>
+        <p>Las ROMs de Shawn «blargg» Blargg son el estándar de facto para certificar CPUs GB:
+        verifican cada instrucción con checksums CRC-32 y publican el veredicto por el puerto serie.
+        Aquí capturamos ese mismo <code>Passed</code>.</p>
+      </div>
+      <div class="panel">
+        <h3>¿Por qué importa el determinismo?</h3>
+        <p>Un emulador no determinista no puede verificar nada: el mismo input debe producir el mismo
+        output siempre. Dos pasadas con hashes idénticos demuestran que el pacer y el RNG no contaminan.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  NovaEmu v1.0 · MIT · oráculo portable: <code>docs/assets/bench.js</code> replica scripts/test_blargg_all.mjs
+  <br><a href="#" data-gh>Repositorio</a> · <a href="./demo.html">Consola completa</a>
+</footer>
+
+<script type="module">
+  import "./assets/site.js";
+  import { TESTS, runSuite } from "./assets/bench.js";
+
+  const rows = document.getElementById("rows");
+  const bar = document.getElementById("bar");
+  const summary = document.getElementById("summary");
+  const runBtn = document.getElementById("run");
+
+  // filas iniciales
+  rows.innerHTML = "";
+  const cells = {};
+  for (const t of TESTS) {
+    const div = document.createElement("div");
+    div.className = "test-row";
+    div.innerHTML = `<span class="res">·</span><span class="name">${t.id} — ${t.name}</span>
+                     <span class="time"></span><span class="detail mono" style="font-size:11.5px;color:var(--fg-dim);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>`;
+    rows.appendChild(div);
+    cells[t.id] = { res: div.querySelector(".res"), time: div.querySelector(".time"), detail: div.querySelector(".detail") };
+  }
+
+  runBtn.addEventListener("click", async () => {
+    runBtn.disabled = true;
+    summary.textContent = "ejecutando…";
+    let done = 0;
+    const result = await runSuite((id, status, detail, ms) => {
+      const c = cells[id];
+      if (c) {
+        c.res.textContent = status === "pass" ? "PASS" : status === "fail" ? "FAIL" : "…";
+        c.res.className = "res " + status;
+        c.time.textContent = ms ? (ms / 1000).toFixed(2) + "s" : "";
+        c.detail.textContent = detail ?? "";
+      }
+      if (status !== "run") {
+        done++;
+        bar.style.width = (done / TESTS.length * 100).toFixed(0) + "%";
+      }
+    });
+    summary.textContent = `${result.pass}/${result.total} PASS` + (result.fail ? ` · ${result.fail} FAIL` : " · SUITE COMPLETA EN VERDE");
+    summary.style.color = result.fail ? "var(--red)" : "var(--accent-2)";
+    runBtn.disabled = false;
+  });
+</script>
+</body>
+</html>
