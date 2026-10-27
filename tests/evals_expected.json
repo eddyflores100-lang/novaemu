@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "golden_hashes": {
+    "chip8_bounce_300f": "28c31cf8df2ec325",
+    "schip_bounce_300f": "96b4fc937dc825b9"
+  },
+  "thresholds": {
+    "chip8_min_fps": 500000,
+    "gb_min_fps": 1000,
+    "max_binary_kb": 512,
+    "blargg_roms_min_pass": 11
+  }
+}
