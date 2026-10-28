@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NovaEmu 2.0 — consola multissistema en tu navegador: 14 sistemas, juegos incluidos, mando y pantalla completa</title>
-<meta name="description" content="Juega YA: Cave Story (Mega Drive), Celeste Classic (GBA), RoboRun (NES), Super Boss Gaiden y GothicVania (SNES) incluidos. Carga tu ROM de NES, SNES, GB, GBA, Mega Drive, N64, PS1, Atari y más. DualSense/Xbox, fullscreen, save states y sonido.">
+<title>NovaEmu 3.0 MODERN — PSP, PlayStation 1, N64, DS y Saturn en tu navegador</title>
+<meta name="description" content="La emulación moderna de octubre 2026 en tu navegador: trae la ROM de tu juego de PSP, PS1, Nintendo 64, Nintendo DS o Sega Saturn y juega YA con mando DualSense/Xbox, save states y pantalla completa. Tu ROM nunca sale de tu dispositivo.">
 <link rel="stylesheet" href="./assets/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/><rect x='62' y='30' width='16' height='16' fill='%2334d399'/><rect x='22' y='54' width='56' height='8' fill='%2310b981'/><rect x='32' y='70' width='36' height='8' fill='%2334d399'/></svg>">
 </head>
@@ -13,9 +13,9 @@
   <a class="brand" href="./index.html">Nova<b>Emu</b></a>
   <nav>
     <a href="./index.html" class="active">Jugar</a>
+    <a href="#moderno">Modernos</a>
     <a href="#cargar">Cargar ROM</a>
-    <a href="#sistemas">Sistemas</a>
-    <a href="#escena">Escena 2026</a>
+    <a href="#escena">Escena oct-2026</a>
     <a href="./demo.html">Lab</a>
     <a href="./tests.html">Pruebas</a>
     <a href="#" data-gh>GitHub ↗</a>
@@ -26,105 +26,142 @@
 
   <!-- HERO -->
   <section class="hero">
-    <h1>Nova<span>Emu</span> <span class="vtag">2.0</span></h1>
-    <p class="lead"><strong>Una consola multissistema que vive en tu navegador.</strong>
-      Cinco juegos completos incluidos —<em>Cave Story, Celeste Classic, RoboRun, Super Boss Gaiden y GothicVania</em>—
-      y si tienes tus propias ROMs, las corre en <strong>14 sistemas</strong>: NES, SNES, Game Boy, GBA,
-      Mega Drive, N64, <strong>PlayStation 1</strong>, Atari 2600 y más.
-      Con <strong>mando DualSense/Xbox</strong>, <strong>pantalla completa</strong>, <strong>sonido</strong>
-      y <strong>save states</strong>. Tu ROM nunca sale de tu navegador.</p>
+    <h1>Nova<span>Emu</span> <span class="vtag">3.0 MODERN</span></h1>
+    <p class="lead"><strong>La escena de emulación de octubre 2026, en tu navegador.</strong>
+      Trae la ROM de tu juego —<em>God of War, GTA, Metal Gear Solid, Zelda Ocarina of Time,
+      Pokémon, Panzer Dragoon…</em>— y corre <strong>PSP, PlayStation 1, Nintendo 64,
+      Nintendo DS y Sega Saturn</strong> con núcleos RetroArch WASM: mando DualSense/Xbox,
+      save states, rewind, sonido y pantalla completa. Tu ROM nunca sale de tu dispositivo.</p>
     <div class="badges">
-      <span class="badge green">✓ 5 juegos completos incluidos</span>
-      <span class="badge green">✓ 14 sistemas</span>
+      <span class="badge green">✓ PSP · PS1 · N64 · NDS · Saturn</span>
+      <span class="badge green">✓ +Mega-CD · DOS · Arcade · 10 sistemas retro</span>
       <span class="badge green">✓ DualSense / Xbox / teclado</span>
-      <span class="badge green">✓ Fullscreen + save states + sonido</span>
-      <span class="badge amber">cores RetroArch WASM</span>
-      <span class="badge">núcleo propio CHIP-8 certificado</span>
+      <span class="badge green">✓ Fullscreen + save states + rewind</span>
+      <span class="badge amber">PS5/PS4/Series → ruta nativa (abajo)</span>
+      <span class="badge">núcleo propio CHIP-8 certificado 15/15</span>
     </div>
     <div class="controls" style="justify-content:center">
-      <a class="btn primary" href="#biblioteca">🎮 Jugar ahora</a>
-      <a class="btn" href="#cargar">📥 Cargar tu ROM</a>
+      <a class="btn primary" href="#cargar">🚀 Cargar mi ROM ahora</a>
+      <a class="btn" href="#moderno">¿Qué juegos puedo correr?</a>
+      <a class="btn" href="#escena">📰 Escena oct-2026</a>
       <a class="btn" href="./tests.html">Verificar en tu navegador</a>
     </div>
   </section>
 
-  <!-- BIBLIOTECA -->
-  <section class="block" id="biblioteca">
-    <h2>🎮 Biblioteca — clic y a jugar</h2>
-    <p class="sub">Juegos completos y <strong>legales</strong>: homebrew y freeware con licencia verificada,
-      incluidos en el repo para que funcione sin configurar nada. Se abren a pantalla completa en el player.</p>
+  <!-- MODERNOS -->
+  <section class="block" id="moderno">
+    <h2>🔥 Juegos modernos — qué corre HOY en tu navegador</h2>
+    <p class="sub">Cada tarjeta lista <strong>juegos reales que probablemente ya tienes</strong>: carga su ROM
+      (ISO/CSO/CHD/Z64/NDS…) desde tu dispositivo y arranca al instante. <strong>Nunca distribuimos ROMs comerciales</strong>
+      — el player corre TU copia, 100% local. Requisitos especiales marcados en cada tarjeta.</p>
+    <div class="sys-grid" id="sys-modern"><!-- generado --></div>
+
+    <div class="panel" style="margin-top:18px;border-color:#78350f">
+      <h3 style="color:#fcd34d">¿PS2 · PS3 · PS4 · PS5 · Switch · Xbox Series?</h3>
+      <p><strong>En octubre 2026 NINGUNA de esas consolas corre dentro de un navegador</strong> — ni en este
+        sitio ni en ningún otro: sus emuladores son apps nativas (Vulkan/D3D12, hilos reales, GB de memoria).
+        Lo que la escena sí logró esta semana (verificado el 27-oct) es esto:</p>
+      <div style="overflow-x:auto">
+        <table id="tabla-nativa">
+          <thead><tr><th>Consola</th><th>Emulador nativo</th><th>Estado 2026</th><th></th></tr></thead>
+          <tbody><!-- generado --></tbody>
+        </table>
+      </div>
+      <p style="margin-top:8px">Mientras tanto, el techo real del navegador es exactamente lo que NovaEmu corre bien:
+        <strong>PSP (2004-2014) y DS (2004-2014) son las consolas más modernas emulables en web</strong>, seguidas de
+        PS1/N64/Saturn en 3D.</p>
+    </div>
+
+    <details class="panel" style="margin-top:12px">
+      <summary style="cursor:pointer"><b>Ver también los 10 sistemas retro</b> (SNES, Mega Drive, GBA, NES, Game Boy…)</summary>
+      <div class="sys-grid" id="sys-retro" style="margin-top:12px"><!-- generado --></div>
+    </details>
+  </section>
+
+  <!-- CARGA TU ROM -->
+  <section class="block" id="cargar">
+    <h2>🚀 Carga tu ROM — se queda en tu navegador</h2>
+    <p class="sub">Arrastra <strong>uno o varios archivos</strong> aquí (PS1 multi-.bin: seleccionalos juntos y se
+      empaquetan solos), se detecta el sistema, se guarda <strong>solo en tu dispositivo</strong> (IndexedDB) y
+      arranca el player. También acepta URL https directa. <span class="mono">.iso .cso .pbp .chd .bin .cue .z64 .n64 .v64 .nds .sfc .smc .gba .md .gen .nes .gb .gbc .sms .gg .32x .pce .a26 .vb .zip</span></p>
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Suelta aquí tu ROM">
+      <div style="font-size:40px;line-height:1">🕹️</div>
+      <div><b>Arrastra tu ROM aquí</b> o haz clic para elegir el archivo(s)</div>
+      <div class="mono" style="font-size:12.5px;color:var(--fg-dim)">PSP (.iso/.cso/.pbp) · PS1 (.chd/.pbp/.bin+.cue) · N64 (.z64) · DS (.nds) · Saturn (.cue+.bin) · autodetección · sin subidas a ningún servidor</div>
+    </div>
+    <input type="file" id="rom-input" hidden>
+
+    <!-- selector para extensiones ambiguas -->
+    <div class="panel" id="sys-chooser" hidden style="margin-top:12px;border-color:var(--accent)">
+      <h3>¿De qué consola es este archivo?</h3>
+      <p class="sub" id="sys-chooser-file" style="margin-bottom:10px"></p>
+      <div class="controls" id="sys-chooser-btns"><!-- generado --></div>
+    </div>
+
+    <div class="controls" style="margin-top:12px">
+      <input id="rom-url" type="url" placeholder="https://…/mi-juego.cso (URL directa https)" style="flex:1;min-width:220px">
+      <button id="rom-url-go" class="btn primary">▶ Cargar desde URL</button>
+    </div>
+
+    <!-- BIOS -->
+    <div class="panel" style="margin-top:16px">
+      <h3>💾 BIOS / firmware (PS1 · Saturn · Mega-CD · DS)</h3>
+      <p class="sub">PS1 arranca la mayoría de juegos sin BIOS; <strong>Saturn y Mega-CD casi siempre la exigen</strong>.
+        Si la tienes extraída de tu propia consola, guárdala aquí una sola vez (queda en tu dispositivo):</p>
+      <div class="controls">
+        <select id="bios-sys">
+          <option value="psx">PlayStation 1 (scph5501.bin / scph5500 / scph5502 o zip)</option>
+          <option value="saturn">Sega Saturn (saturn.bin o zip)</option>
+          <option value="segacd">Sega CD (bios_CD_U/E/J.bin o zip)</option>
+          <option value="nds">Nintendo DS (bios7.bin + bios9.bin + firmware.bin o zip)</option>
+        </select>
+        <button id="bios-btn" class="btn">📁 Elegir y guardar BIOS</button>
+        <input type="file" id="bios-input" hidden>
+      </div>
+      <div id="bios-list" style="margin-top:8px"><!-- generado --></div>
+    </div>
+
+    <p class="sub" style="margin-top:10px">⚖️ NovaEmu no incluye ni distribuye ROMs con copyright: corre los
+      <strong>juegos homebrew incluidos</strong> (abajo) y <strong>las copias de respaldo que aportas</strong> de tus propios juegos.</p>
+  </section>
+
+  <!-- ESCENA OCT-2026 -->
+  <section class="block" id="escena">
+    <h2>📰 Escena de emulación — octubre 2026 (repos actuales)</h2>
+    <p class="sub">Lo que está moviendo la escena AHORA, verificado el 27-oct vía API de GitHub + prensa
+      (las estrellas se refrescan en vivo al abrir esta página). <strong>Todos son proyectos NATIVOS de PC:
+      ninguno corre en navegador — por eso NovaEmu existe.</strong></p>
+    <div class="escena-grid" id="escena-grid"><!-- generado --></div>
+
+    <div class="grid cols-2" style="margin-top:18px">
+      <div class="panel">
+        <h3>🗓️ Crónica de la semana</h3>
+        <ul class="news" id="news-list"><!-- generado --></ul>
+      </div>
+      <div class="panel">
+        <h3>🧬 Técnicas que adoptamos de esos repos</h3>
+        <p><strong>KytyPS5 / SharpEmu</strong> → testing por golden-frames: capturas de referencia comparadas
+          bit a bit (nuestro banco usa goldens de frame-300 + Blargg).</p>
+        <p><strong>AnyPS5</strong> → carga por capas con fallback: si un componente falla, se degrada con
+          aviso claro en vez de pantalla en blanco (nuestro player prueba 2 CDNs y overlay de error).</p>
+        <p><strong>PS5X360</strong> → input nativo de mando: DualSense/Xbox mapeados sin configuración
+          (Gamepad API + indicador en vivo en el player).</p>
+        <p><strong>REA-Prompts</strong> → metodología REAP de ingeniería inversa que guía el Lab del motor propio.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- INCLUIDOS -->
+  <section class="block" id="incluidos">
+    <h2>🎮 Juegos incluidos — clic y a jugar (proof instantánea)</h2>
+    <p class="sub">Cinco juegos completos <strong>legales</strong> (homebrew/freeware con licencia verificada)
+      para comprobar que el player funciona sin configurar nada. Los modernos los aportas tú arriba.</p>
     <div class="lib-grid" id="lib-grid"><!-- generado --></div>
 
     <h3 style="margin-top:26px">🕹️ Arcade Nova — obra propia del motor certificado (CHIP-8/S-CHIP)</h3>
     <p class="sub">Cuatro juegos ensamblados a mano con nuestro <span class="mono">c8asm</span> sobre el
       núcleo WASM bit-exacto (Blargg 12/12, goldens frame-300). Son la prueba de certificación del motor propio.</p>
     <div class="lib-grid" id="nova-grid"><!-- generado --></div>
-  </section>
-
-  <!-- CARGA TU ROM -->
-  <section class="block" id="cargar">
-    <h2>📥 Carga tu ROM — se queda en tu navegador</h2>
-    <p class="sub">Arrastra un archivo aquí (o elige con el botón): se detecta el sistema por la extensión,
-      se guarda <strong>solo en tu dispositivo</strong> (IndexedDB) y arranca el player. También puedes usar
-      una URL https directa. <span class="mono">.nes .sfc .smc .gb .gbc .gba .md .gen .sms .gg .z64 .n64 .v64 .nds .chd .pbp .cue .a26 .pce .vb .zip</span></p>
-    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Suelta aquí tu ROM">
-      <div style="font-size:40px;line-height:1">🕹️</div>
-      <div><b>Arrastra tu ROM aquí</b> o haz clic para elegir el archivo</div>
-      <div class="mono" style="font-size:12.5px;color:var(--fg-dim)">autodetección de sistema · sin subidas a ningún servidor</div>
-    </div>
-    <input type="file" id="rom-input" hidden>
-    <div class="controls" style="margin-top:12px">
-      <input id="rom-url" type="url" placeholder="https://…/mi-juego.sfc (URL directa https)" style="flex:1;min-width:220px">
-      <button id="rom-url-go" class="btn primary">▶ Cargar desde URL</button>
-    </div>
-    <p class="sub" style="margin-top:8px">⚠️ Si el archivo es <span class="mono">.zip</span> se abre como ROM de
-      <strong>arcade (FBNeo)</strong>, o como consola si el zip contiene una sola ROM. PS1 recomendamos
-      <span class="mono">.chd</span> o <span class="mono">.pbp</span>.</p>
-  </section>
-
-  <!-- SISTEMAS -->
-  <section class="block" id="sistemas">
-    <h2>🖥️ Sistemas soportados</h2>
-    <p class="sub">Cores RetroArch compilados a WebAssembly (EmulatorJS), ejecutados 100% en tu navegador.
-      El mando (DualSense, Xbox, SNES-USB…) se mapea solo; el teclado siempre funciona.</p>
-    <div class="sys-grid" id="sys-grid"><!-- generado --></div>
-  </section>
-
-  <!-- ESCENA 2026 -->
-  <section class="block" id="escena">
-    <h2>📰 La escena real de la emulación — octubre 2026</h2>
-    <p class="sub">Verificamos los proyectos de la semana (Task 13, 27-oct-2026, datos de la API de GitHub + prensa).
-      <strong>La emulación PS5/Xbox Series es nativa (Vulkan/D3D12): no corre en ningún navegador hoy.</strong>
-      NovaEmu trae al navegador lo que sí es posible, hecho bien.</p>
-    <div class="escena-grid">
-      <a class="escena-card" href="https://github.com/boykopovar/AnyPS5" target="_blank" rel="noopener">
-        <b>AnyPS5</b><span class="stars">★ 49 046</span>
-        <p>Portado automático de .exe de PS5 a PC (76% libs, 50% shaders). Nativo Windows.</p>
-      </a>
-      <a class="escena-card" href="https://github.com/KytyPS5/KytyPS5" target="_blank" rel="noopener">
-        <b>KytyPS5</b><span class="stars">★ 10 014</span>
-        <p>Capa de traducción C++ estilo RPCS3. 134 títulos con render. Push 27-oct.</p>
-      </a>
-      <a class="escena-card" href="https://github.com/sharpemu/sharpemu" target="_blank" rel="noopener">
-        <b>SharpEmu</b><span class="stars">★ 6 476</span>
-        <p>C#: 6 juegos jugables a 60 fps; gameplay de Ghost of Yotei el 11-oct.</p>
-      </a>
-      <a class="escena-card" href="https://github.com/boykopovar/PS5X360" target="_blank" rel="noopener">
-        <b>PS5X360</b><span class="stars">★ 388</span>
-        <p>Xbox 360 corriendo DENTRO de PS5 real (base Xenia Canary, DualSense nativo).</p>
-      </a>
-      <a class="escena-card" href="https://github.com/jadyx/jadyx" target="_blank" rel="noopener">
-        <b>jadyx</b><span class="stars">★ 68</span>
-        <p>Switch nativo en Xbox Series X|S: Eden UWP + D3D12.</p>
-      </a>
-      <a class="escena-card" href="https://github.com/JoasASantos/REA-Prompts" target="_blank" rel="noopener">
-        <b>REA-Prompts</b><span class="stars">★ 3 011</span>
-        <p>Metodología REAP de ingeniería inversa (26 packs) — base de nuestro Lab y goldens.</p>
-      </a>
-    </div>
-    <p class="sub" style="margin-top:10px">Técnicas que adoptamos esta semana: testing por golden-frames
-      (estilo Kyty/SharpEmu), fallbacks de carga por capas (estilo AnyPS5) e input de mando nativo
-      (estilo PS5X360). El detalle está en el <a href="./dev.html">diario de desarrollo</a>.</p>
   </section>
 
   <!-- LAB -->
@@ -137,105 +174,25 @@
       </div>
       <div class="panel">
         <h3>✅ Banco de pruebas</h3>
-        <p>Goldens bit-exacto, determinismo, Blargg y ahora <strong>checks web v2</strong> (ROMs, CDN,
-          player) en <a href="./tests.html">tests.html</a>. Todo corre en tu navegador.</p>
+        <p>Goldens bit-exacto, determinismo, Blargg y <strong>checks web v3</strong> (ROMs, CDNs, catálogo
+          moderno, ZIP local, aislamiento PSP) en <a href="./tests.html">tests.html</a>. Todo en tu navegador.</p>
       </div>
       <div class="panel">
         <h3>⚖️ Legal</h3>
-        <p>Los 5 juegos incluidos son homebrew/freeware con licencia verificada (ver ficha de cada uno).
-          No incluimos ROMs comerciales: <strong>carga las tuyas</strong> desde tu propio dispositivo.</p>
+        <p>Los juegos incluidos son homebrew/freeware con licencia verificada (ficha de cada uno).
+          <strong>No incluimos ROMs comerciales</strong>: carga las tuyas desde tu propio dispositivo.</p>
       </div>
     </div>
   </section>
 </main>
 
 <footer>
-  NovaEmu 2.0 · MIT · cores de consola por <a href="https://emulatorjs.org" target="_blank" rel="noopener">EmulatorJS</a> (GPL-3.0, RetroArch WASM)
+  NovaEmu 3.0 MODERN · MIT · núcleos de consola por <a href="https://emulatorjs.org" target="_blank" rel="noopener">EmulatorJS</a> (GPL-3.0, RetroArch WASM) · threads por coi-serviceworker (patrón MIT)
   <br><a href="#" data-gh>Repositorio</a> · <a href="./demo.html">Lab</a> · <a href="./tests.html">Pruebas</a> · hecho para PCs viejas también
 </footer>
 
 <script src="./assets/catalog.js"></script>
-<script src="./assets/site.js"></script>
-<script type="module">
-  const C = window.NOVA_CATALOG;
-
-  /* --- Biblioteca --- */
-  const lib = document.getElementById("lib-grid");
-  lib.innerHTML = C.GAMES.map(g => {
-    const s = C.SYSTEMS[g.system];
-    return `<a class="lib-card" href="./play.html?sys=${s.core}&file=${encodeURIComponent(g.file)}" style="--ca:${g.cover.a};--cb:${g.cover.b}">
-      <div class="cover"><span class="glyph">${g.cover.glyph}</span><span class="syspill" style="background:${s.color}">${s.label}</span></div>
-      <div class="meta"><b>${g.title}</b><span class="tag">${g.tag}</span>
-        <p>${g.desc}</p>
-        <span class="lic mono">${g.license}</span></div>
-      <span class="playbtn">▶ Jugar</span></a>`;
-  }).join("");
-
-  /* --- Arcade Nova --- */
-  const nova = document.getElementById("nova-grid");
-  nova.innerHTML = C.NOVA_GAMES.map(g => `
-    <a class="lib-card small" href="./play.html?rom=${g.id}" style="--ca:#052e26;--cb:#064e3b">
-      <div class="cover"><span class="glyph">${g.title.replace("Nova ","").toUpperCase()}</span><span class="syspill" style="background:#10b981">CHIP-8 · núcleo propio</span></div>
-      <div class="meta"><b>${g.title}</b><span class="tag">${g.keys}</span><p>${g.desc}</p></div>
-      <span class="playbtn">▶ Jugar</span></a>`).join("");
-
-  /* --- Sistemas --- */
-  document.getElementById("sys-grid").innerHTML = Object.values(C.SYSTEMS).map(s => `
-    <div class="sys-card"><b style="color:${s.color}">${s.label}</b>
-      <span class="mono exts">${s.exts.map(e=>"."+e).join(" ")}</span>
-      <span class="note">${s.note}</span></div>`).join("");
-
-  /* --- Drag & drop + input --- */
-  const dz = document.getElementById("dropzone");
-  const inp = document.getElementById("rom-input");
-  const IDB_KEY = "pending-rom";
-  function openIDB() {
-    return new Promise((res, rej) => {
-      const rq = indexedDB.open("novaemu-fs", 1);
-      rq.onupgradeneeded = () => rq.result.createObjectStore("files");
-      rq.onsuccess = () => res(rq.result);
-      rq.onerror = () => rej(rq.error);
-    });
-  }
-  async function sendFile(file) {
-    try {
-      const db = await openIDB();
-      await new Promise((res, rej) => {
-        const tx = db.transaction("files", "readwrite");
-        tx.objectStore("files").put(file, IDB_KEY);
-        tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-      });
-      const core = C.detectCore(file.name);
-      if (!core) { alert("Extensión no reconocida. Soportadas: " + Object.keys(C.EXT2CORE).map(e=>"."+e).join(" ")); return; }
-      location.href = "./play.html?local=1";
-    } catch (e) {
-      alert("No se pudo guardar el archivo localmente: " + e.message);
-    }
-  }
-  dz.addEventListener("click", () => inp.click());
-  dz.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") inp.click(); });
-  inp.addEventListener("change", () => { if (inp.files[0]) sendFile(inp.files[0]); });
-  ["dragover", "dragenter"].forEach(ev => document.addEventListener(ev, e => {
-    e.preventDefault(); dz.classList.add("over");
-  }));
-  ["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => {
-    e.preventDefault(); if (ev === "drop" || e.target === document.documentElement) dz.classList.remove("over");
-  }));
-  document.addEventListener("drop", e => {
-    e.preventDefault();
-    const f = e.dataTransfer?.files?.[0];
-    if (f) sendFile(f);
-  });
-
-  /* --- URL --- */
-  document.getElementById("rom-url-go").addEventListener("click", () => {
-    const u = document.getElementById("rom-url").value.trim();
-    if (!/^https:\/\/.+/i.test(u)) { alert("Pega una URL https directa al archivo de la ROM."); return; }
-    location.href = "./play.html?url=" + encodeURIComponent(u);
-  });
-  document.getElementById("rom-url").addEventListener("keydown", e => {
-    if (e.key === "Enter") document.getElementById("rom-url-go").click();
-  });
-</script>
+<script src="./assets/zip.js"></script>
+<script type="module" src="./assets/app.js"></script>
 </body>
 </html>

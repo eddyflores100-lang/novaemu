@@ -24,8 +24,9 @@
   <section class="hero" style="padding:34px 0 10px;text-align:left">
     <h1 style="font-size:clamp(26px,4vw,38px)">Banco de <span>pruebas</span></h1>
     <p class="lead" style="margin-bottom:0"><span id="total-cnt">24</span> checks del motor (goldens bit-exacto, determinismo y Blargg
-      leyendo el puerto serie) + <strong>8 checks web v2</strong>: integridad de las 5 ROMs incluidas
-      (magic bytes), CDNs de núcleos, localización y autodetección de sistema.</p>
+      leyendo el puerto serie) + <strong>12 checks web v3</strong>: integridad de las 5 ROMs incluidas
+      (magic bytes), CDNs, catálogo moderno (PSP/PSX/N64/DS/Saturn), empaquetador ZIP local, aislamiento para
+      núcleos threaded y datos de la escena oct-2026.</p>
   </section>
 
   <section class="block">
@@ -42,12 +43,12 @@
 
     <div class="panel" style="margin-top:18px">
       <div class="controls">
-        <button id="run-web" class="primary">▶ Ejecutar los 8 checks web v2</button>
+        <button id="run-web" class="primary">▶ Ejecutar los 12 checks web v3</button>
         <span id="summary-web" class="mono" style="font-size:13.5px;color:var(--fg-dim)">sin ejecutar</span>
       </div>
       <div class="progress"><div id="bar-web"></div></div>
       <div id="rows-web">
-        <div class="test-row"><span class="res">·</span><span class="name" style="color:var(--fg-dim)">ROMs incluidas, CDNs, idioma y autodetección.</span></div>
+        <div class="test-row"><span class="res">·</span><span class="name" style="color:var(--fg-dim)">ROMs incluidas, CDNs, catálogo moderno, ZIP local, aislamiento y escena.</span></div>
       </div>
     </div>
 
@@ -74,11 +75,12 @@
 </main>
 
 <footer>
-  NovaEmu 2.0 · MIT · oráculo portable: <code>docs/assets/bench.js</code> + checks web v2 en esta página
+  NovaEmu 3.0 · MIT · oráculo portable: <code>docs/assets/bench.js</code> + checks web v3 en esta página
   <br><a href="#" data-gh>Repositorio</a> · <a href="./demo.html">Consola completa</a>
 </footer>
 
 <script src="./assets/catalog.js"></script>
+<script src="./assets/zip.js"></script>
 <script type="module">
   import "./assets/site.js";
   import { TESTS, runSuite } from "./assets/bench.js";
@@ -191,6 +193,49 @@
         const r = await fetch("./wasm/novaemu.wasm");
         if (!r.ok) throw new Error("HTTP " + r.status);
         return "novaemu.wasm + 4 juegos nova OK";
+    }},
+    { id: "W9", name: "catálogo moderno: PSP/PSX/N64/NDS/Saturn/Mega-CD/DOS/Arcade", fn: async () => {
+        const need = ["psp","psx","n64","nds","segaSaturn","segaCD","dos","arcade"];
+        const faltan = need.filter(k => !C.SYSTEMS[k]);
+        if (faltan.length) throw new Error("faltan: " + faltan.join(","));
+        if (C.SYSTEMS.psp.threads !== true) throw new Error("PSP debe marcar threads");
+        if (C.SYSTEMS.psp.core !== "psp" || C.SYSTEMS.n64.core !== "n64" || C.SYSTEMS.nds.core !== "nds") throw new Error("cores mal");
+        if (!C.SYSTEMS.psx.bios?.opcional) throw new Error("BIOS PSX debe ser opcional");
+        if (!C.SYSTEMS.segaSaturn.bios || C.SYSTEMS.segaSaturn.bios.opcional) throw new Error("BIOS Saturn requerida");
+        if (!C.SYSTEMS.psp.games?.length || !C.SYSTEMS.psx.games?.length) throw new Error("guía de juegos vacía");
+        const totalJuegos = need.reduce((a,k)=>a+(C.SYSTEMS[k].games?.length||0),0);
+        return `8 sistemas modernos · ${totalJuegos} juegos icónicos en la guía`;
+    }},
+    { id: "W10", name: "extensión ambigua .iso pregunta (PSP vs PSX) y ZIP local funciona", fn: async () => {
+        if (!C.AMBIGUOUS.iso.includes("psp") || !C.AMBIGUOUS.iso.includes("psx")) throw new Error(".iso no marcada ambigua");
+        if (C.detectCore("juego.iso") !== "psx") throw new Error("detectCore .iso debe preferir psx");
+        if (!window.NovaZip) throw new Error("zip.js no cargado");
+        if (NovaZip.crc32(new TextEncoder().encode("123456789")) !== 0xCBF43926) throw new Error("CRC-32KnownAnswer");
+        const u8 = await NovaZip.pack([
+          { name: "juego.cue", data: new TextEncoder().encode("FILE \"juego.bin\" BINARY\n") },
+          { name: "juego.bin", data: new Uint8Array(256).fill(0xAB) }
+        ]);
+        const eocd = u8.length - 22;
+        const sig = [u8[eocd],u8[eocd+1],u8[eocd+2],u8[eocd+3]].map(b=>b.toString(16).padStart(2,"0")).join("");
+        if (sig !== "504b0506") throw new Error("EOCD inválido: " + sig); /* PK\x05\x06 little-endian */
+        const pk = (u8[0]===0x50&&u8[1]===0x4b);
+        if (!pk) throw new Error("firma local PK");
+        return `CRC ok · zip ${u8.length} B con cue+bin válido (PK…EOCD)`;
+    }},
+    { id: "W11", name: "coi-serviceworker servido (núcleos threaded PSP/DOS)", fn: async () => {
+        const r = await fetch("./coi-serviceworker.js");
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const t = await r.text();
+        if (!t.includes("Cross-Origin-Embedder-Policy")) throw new Error("falta COEP");
+        if (!t.includes("Cross-Origin-Opener-Policy")) throw new Error("falta COOP");
+        return "COOP/COEP listos" + (self.crossOriginIsolated ? " · aislamiento ACTIVO" : " · se activará tras recarga en el player");
+    }},
+    { id: "W12", name: "escena oct-2026 y ruta nativa con datos", fn: async () => {
+        if (C.ESCENA.length < 7) throw new Error("escena incompleta");
+        if (!C.ESCENA.every(r => /^https:\/\/github\.com\/.+\/.+/.test(r.url))) throw new Error("URL de repo inválida");
+        if (C.NOTICIAS.length < 6) throw new Error("noticias incompletas");
+        if (C.NATIVA.length < 8) throw new Error("ruta nativa incompleta");
+        return `${C.ESCENA.length} repos · ${C.NOTICIAS.length} noticias · ${C.NATIVA.length} rutas nativas`;
     }}
   ];
 

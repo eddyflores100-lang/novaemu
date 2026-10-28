@@ -16,26 +16,44 @@ make demos      # genera ROMs demo jugables
 make test       # ejecuta la suite completa NE-E001..E012
 ```
 
-## NovaEmu 2.0 — consola multissistema (29-oct-2026)
+## NovaEmu 3.0 MODERN — la emulación moderna de oct-2026 en el navegador (29-oct-2026)
 
 **Juega ya en https://eddyflores100-lang.github.io/novaemu/**
+
+- **Sistemas modernos primero**: **PSP** (ppsspp threaded), **PlayStation 1** (pcsx_rearmed/mednafen, BIOS opcional),
+  **Nintendo 64** (mupen64plus_next), **Nintendo DS** (melonds/desmume), **Sega Saturn** (yabause),
+  **Mega-CD** (genesis_plus_gx), **DOS** (dosbox_pure) y **Arcade** (FBNeo/MAME2003+) — más 10 sistemas retro.
+- **Guía de juegos reales**: cada sistema moderno lista sus títulos icónicos (God of War, GTA, Metal Gear Solid,
+  Final Fantasy VII, Zelda OoT, Panzer Dragoon…). **Nunca se distribuyen ROMs comerciales**: el usuario carga SU copia
+  (.iso/.cso/.pbp/.chd/.z64/.nds/.cue+.bin) y corre 100% local.
+- **Multi-archivo sin dolor**: PS1 con varios .bin → se empaquetan en ZIP (método STORE, CRC-32 propio en `assets/zip.js`)
+  sin salir del navegador; extensiones ambiguas (.iso puede ser PSP o PSX) → la web pregunta.
+- **Gestor de BIOS** para PS1/Saturn/Mega-CD/DS guardado en IndexedDB e inyectado como `EJS_biosUrl`.
+- **PSP necesita hilos** (SharedArrayBuffer): `coi-serviceworker.js` en la RAÍZ de `docs/` inyecta COOP/COEP en
+  GitHub Pages (que no puede enviar cabeceras). El SW se recarga una vez la primera visita; el player tiene
+  timeout de 9 s y mensaje claro si el navegador no soporta aislamiento (Firefox/iOS).
+- **Escena oct-2026 en vivo**: repos verificados el 27-oct (AnyPS5, KytyPS5, SharpEmu, shadPS4, PS5X360, jadyx)
+  con **estrellas refrescadas vía API de GitHub al abrir la página** (caché 3 h), crónica datada de la semana y
+  **tabla de ruta nativa** (PS5→KytyPS5, PS4→shadPS4, PS3→RPCS3, PS2→PCSX2, Xbox→xemu/Xenia): en octubre-2026
+  ninguna consola de gen 9 corre en navegador — NovaEmu trae el techo real (PSP/DS son las modernas emulables en web).
+- **Banco de pruebas: 36 checks** (24 del motor + 12 web v3: catálogo moderno, CRC-32/ZIP local, COOP/COEP, escena).
+
+Lecciones duras de esta versión (ver `docs/dev.html`): el loader de EmulatorJS resuelve rutas con
+`new URL(currentScript.src).pathname` y pierde el host → **`EJS_pathtodata` es obligatorio**;
+el CSS propio puede pisar el atributo `[hidden]` → regla `[hidden]{display:none!important}`;
+**un service worker se registra con scope = su directorio** → para controlar `/play.html` debe vivir en la raíz de `docs/`;
+un script con `export` cargado como clásico revienta la página → los módulos ES se importan desde el `<script type="module">`.
+
+### NovaEmu 2.0 (retro, sigue disponible)
 
 - **5 juegos completos incluidos** (homebrew/freeware con licencia verificada):
   Cave Story (Mega Drive) · Celeste Classic (GBA) · RoboRun (NES, región PAL) ·
   Super Boss Gaiden (SNES) · GothicVania (SNES). Fuente y licencia en cada ficha.
-- **14 sistemas** vía cores RetroArch WASM (EmulatorJS, GPL-3.0): NES, SNES, GB, GBC, GBA,
-  Mega Drive, Master System, Game Gear, N64, NDS, PlayStation 1 (CHD/PBP), Atari 2600,
-  PC Engine, Virtual Boy, Arcade (FBNeo).
 - **Tu ROM nunca sale del navegador**: drag&drop → IndexedDB → player; o URL https directa.
   Autodetección de sistema por extensión. Opciones por juego (p. ej. `fceumm_region: PAL`).
 - **Player dual**: núcleo propio CHIP-8/S-CHIP bit-exacto (`?rom=nova-pong`) o cores profesionales
-  (`?sys=nes&file=…`). Cargador resistente: `EJS_pathtodata` explícito, fallback jsDelivr, timeout.
+  (`?sys=psp&local=1`). Cargador resistente: `EJS_pathtodata` explícito, fallback jsDelivr, timeout.
 - **Mando DualSense/Xbox** (Gamepad API), **pantalla completa**, **save states**, **sonido**, **rewind**.
-- **Banco de pruebas: 32 checks** (24 del motor + 8 web v2: magic bytes de ROMs, CDNs, es-ES, validación).
-
-Lecciones duras de esta versión (ver `docs/dev.html`): el loader de EmulatorJS resuelve rutas con
-`new URL(currentScript.src).pathname` y pierde el host → **`EJS_pathtodata` es obligatorio**;
-el CSS propio puede pisar el atributo `[hidden]` → regla `[hidden]{display:none!important}`.
 
 ## Estructura del repo
 

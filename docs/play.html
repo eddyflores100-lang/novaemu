@@ -78,10 +78,20 @@
 </main>
 
 <script src="./assets/catalog.js"></script>
-<script src="./assets/site.js"></script>
+<script src="./coi-serviceworker.js"></script>
+<script>
+  /* Habilita SharedArrayBuffer (COOP/COEP) en hosting estático → núcleos threaded (PSP/DOS).
+   * El SW DEBE vivir en la raíz: su scope por defecto es su directorio y tiene que
+   * controlar /play.html (un SW bajo /assets/ no puede). */
+  window.coiReady = (typeof window.coiRegister === "function")
+    ? window.coiRegister("./coi-serviceworker.js")
+    : Promise.resolve(false);
+</script>
 <script type="module">
+  import "./assets/site.js";
   import { ConsoleUI } from "./assets/console.js";
   import { installErrorOverlay, installVisibilityGuard } from "./assets/nova-plus.js";
+  import { idbGet } from "./assets/db.js";
 
   installErrorOverlay();
   const C = window.NOVA_CATALOG;
@@ -130,21 +140,7 @@
       return null;
     }
     async function readPending() {
-      try {
-        const db = await new Promise((res, rej) => {
-          const rq = indexedDB.open("novaemu-fs", 1);
-          rq.onupgradeneeded = () => rq.result.createObjectStore("files");
-          rq.onsuccess = () => res(rq.result);
-          rq.onerror = () => rej(rq.error);
-        });
-        const f = await new Promise((res, rej) => {
-          const tx = db.transaction("files", "readonly");
-          const rq = tx.objectStore("files").get("pending-rom");
-          rq.onsuccess = () => res(rq.result || null);
-          rq.onerror = () => rej(rq.error);
-        });
-        return f;
-      } catch { return null; }
+      try { return await idbGet("pending-rom"); } catch { return null; }
     }
 
     if (fileParam) {
@@ -174,9 +170,32 @@
       gameName = f.name;
       $("ejs-title").textContent = f.name;
       $("ejs-sub").textContent = `ROM local (${(f.size/1024/1024).toFixed(1)} MB) · sistema: ${VALID_CORES[core]?.label || core} · no ha salido de tu dispositivo`;
-      $("ejs-hint").innerHTML = `<b>Menú ⚙ del player</b>: mapear mando, save states, rewind, capturas y velocidad`;
+      const extra = VALID_CORES[core]?.beta ? " · núcleo beta: si un juego no arranca, prueba otra versión de la ROM" : "";
+      $("ejs-hint").innerHTML = `<b>Menú ⚙ del player</b>: mapear mando, save states, rewind, capturas y velocidad${extra}`;
     } else {
       return fatal("Faltan parámetros. Usa la biblioteca: index.html#biblioteca");
+    }
+
+    /* ---- aislamiento para núcleos threaded (PSP ppsspp / dosbox_pure) ---- */
+    const sysObj = VALID_CORES[core] || null;
+    if (sysObj && sysObj.threads) {
+      /* el baile de registro+recarga no debe colgar el player nunca */
+      await Promise.race([window.coiReady, new Promise(r => setTimeout(() => r("timeout"), 9000))]);
+      if (!self.crossOriginIsolated) {
+        return fatal("El núcleo de " + (sysObj?.label || core) + " necesita hilos (SharedArrayBuffer). " +
+          "Usa Chrome o Edge de escritorio y abre el sitio directamente " +
+          "(la primera visita el sitio se recarga solo para activar el modo aislado). " +
+          "En Firefox/iOS o visores embebidos ese sistema no puede arrancar hoy.");
+      }
+      window.EJS_threads = true;
+    }
+
+    /* ---- BIOS del usuario (IndexedDB → blob URL) ---- */
+    const biosFile = (sysObj && sysObj.bios) ? await idbGet("bios:" + sysObj.bios.key) : null;
+    if (biosFile) window.EJS_biosUrl = URL.createObjectURL(biosFile);
+    if (sysObj && sysObj.bios && !biosFile) {
+      const aviso = ` · <b style="color:#fcd34d">⚠ ${sysObj.label} sin BIOS${sysObj.bios.opcional ? " (opcional: la compatibilidad mejora con ella)" : " — muchos juegos no arrancarán sin ella"}: añádela en la biblioteca → «💾 BIOS / firmware» (${sysObj.bios.files})</b>`;
+      $("ejs-hint").innerHTML += aviso;
     }
 
     /* ---- cargador con fallback CDN + timeout ---- */
@@ -200,6 +219,12 @@
     );
     window.EJS_ready = () => { $("ejs-loading").hidden = true; };
     window.EJS_onGameStart = () => { $("ejs-loading").hidden = true; };
+    /* ID estable por juego+sistema: separa saves/states/caché entre juegos */
+    (function () {
+      let h = 5381; const s = window.EJS_gameName + "|" + core;
+      for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+      window.EJS_gameID = Math.abs(h) % 1000000;
+    })();
     function injectLoader(base) {
       /* OBLIGATORIO: sin EJS_pathtodata el loader resuelve rutas contra el pathname de la página
        * (new URL(currentScript.src).pathname) y busca los núcleos en nuestro origen → 404. */
