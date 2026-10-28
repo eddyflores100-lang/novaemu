@@ -283,3 +283,83 @@ footer {
   color: var(--fg-dim); font-size: 13px; line-height: 1.6;
 }
 .play-hint b { color: var(--fg); }
+
+/* ============ v2.0: biblioteca con carátulas, dropzone, sistemas, escena, player EJS ============ */
+.lib-card .cover {
+  position: relative; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(120% 120% at 20% 10%, var(--ca) 0%, var(--cb) 70%, #09090b 100%);
+}
+.lib-card .glyph {
+  font-family: var(--mono); font-weight: 800; font-size: clamp(22px, 4vw, 34px);
+  letter-spacing: .18em; color: rgba(255,255,255,.92); text-shadow: 0 2px 12px rgba(0,0,0,.6);
+}
+.lib-card .syspill {
+  position: absolute; left: 8px; bottom: 8px; font-size: 10.5px; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px; color: #0b0f0c; letter-spacing: .04em;
+}
+.lib-card .meta { display: flex; flex-direction: column; gap: 4px; padding: 11px 12px 12px; }
+.lib-card .meta .tag { color: #34d399; font-size: 12px; }
+.lib-card .meta p {
+  margin: 0; color: var(--fg-dim); font-size: 12.8px; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.lib-card .lic { color: var(--fg-dim); font-size: 10.8px; opacity: .85; }
+.lib-card .playbtn {
+  margin: 0 12px 12px; text-align: center; padding: 8px 0; border-radius: 8px;
+  border: 1px solid #065f46; background: #022c22; color: #6ee7b7; font-weight: 700; font-size: 13px;
+}
+.lib-card:hover .playbtn { background: #064e3b; color: #d1fae5; }
+.lib-card.small .meta p { -webkit-line-clamp: 2; }
+
+/* dropzone */
+.dropzone {
+  border: 2px dashed var(--border); border-radius: 14px; padding: 34px 20px; text-align: center;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; cursor: pointer;
+  color: var(--fg-dim); transition: border-color .15s, background .15s; outline: none;
+}
+.dropzone:hover, .dropzone:focus, .dropzone.over { border-color: var(--accent); background: #052e1b33; }
+.dropzone.over { color: #6ee7b7; }
+
+/* sistemas */
+.sys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.sys-card {
+  border: 1px solid var(--border); border-radius: 10px; background: #0d0f12; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.sys-card b { font-size: 14.5px; letter-spacing: .03em; }
+.sys-card .exts { font-size: 11.5px; color: var(--fg-dim); word-break: break-word; }
+.sys-card .note { font-size: 12px; color: var(--fg-dim); }
+
+/* escena 2026 */
+.escena-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.escena-card {
+  border: 1px solid var(--border); border-radius: 10px; background: #0d0f12; padding: 14px 16px;
+  text-decoration: none; transition: border-color .12s, transform .12s; display: flex; flex-direction: column; gap: 6px;
+}
+.escena-card:hover { border-color: #10b981; transform: translateY(-2px); text-decoration: none; }
+.escena-card b { color: var(--fg); font-size: 15px; }
+.escena-card .stars { font-family: var(--mono); color: #fcd34d; font-size: 12px; }
+.escena-card p { margin: 0; color: var(--fg-dim); font-size: 12.8px; line-height: 1.45; }
+
+/* player EmulatorJS */
+.ejs-meta {
+  display: flex; gap: 12px; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; margin: 18px 0 10px;
+}
+.ejs-frame { position: relative; min-height: 420px; background: #000; }
+.ejs-frame #ejs-game { width: 100%; min-height: 420px; }
+.ejs-loading {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 14px;
+  align-items: center; justify-content: center; color: var(--fg-dim); font-size: 13.5px;
+  background: rgba(9,9,11,.85); z-index: 5; text-align: center; padding: 20px;
+}
+.spinner {
+  width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--bg-3);
+  border-top-color: var(--accent); animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#fatal .panel { text-align: left; }
+
+/* — regla anti-colisión: el atributo hidden SIEMPRE gana sobre cualquier display — */
+[hidden] { display: none !important; }

@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NovaEmu v1.1 — juega ya: 4 juegos incluidos, mando PS5/Xbox, pantalla completa y sonido</title>
-<meta name="description" content="Emulador CHIP-8/S-CHIP/Game Boy en C99+WASM: 4 juegos incluidos y certificados, mandos DualSense/Xbox vía Gamepad API, pantalla completa, sonido y save states. Blargg 12/12, goldens bit-exacto.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NovaEmu 2.0 — consola multissistema en tu navegador: 14 sistemas, juegos incluidos, mando y pantalla completa</title>
+<meta name="description" content="Juega YA: Cave Story (Mega Drive), Celeste Classic (GBA), RoboRun (NES), Super Boss Gaiden y GothicVania (SNES) incluidos. Carga tu ROM de NES, SNES, GB, GBA, Mega Drive, N64, PS1, Atari y más. DualSense/Xbox, fullscreen, save states y sonido.">
 <link rel="stylesheet" href="./assets/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/><rect x='62' y='30' width='16' height='16' fill='%2334d399'/><rect x='22' y='54' width='56' height='8' fill='%2310b981'/><rect x='32' y='70' width='36' height='8' fill='%2334d399'/></svg>">
 </head>
@@ -13,10 +13,11 @@
   <a class="brand" href="./index.html">Nova<b>Emu</b></a>
   <nav>
     <a href="./index.html" class="active">Jugar</a>
-    <a href="./play.html?rom=nova-pong">Modo arcade</a>
-    <a href="./demo.html">Demo completa</a>
-    <a href="./tests.html">Pruebas (24)</a>
-    <a href="./dev.html">Docs</a>
+    <a href="#cargar">Cargar ROM</a>
+    <a href="#sistemas">Sistemas</a>
+    <a href="#escena">Escena 2026</a>
+    <a href="./demo.html">Lab</a>
+    <a href="./tests.html">Pruebas</a>
     <a href="#" data-gh>GitHub ↗</a>
   </nav>
 </header>
@@ -25,230 +26,216 @@
 
   <!-- HERO -->
   <section class="hero">
-    <h1>Nova<span>Emu</span> <span class="vtag">v1.1</span></h1>
-    <p class="lead"><strong>Juega ahora mismo.</strong> Cuatro juegos incluidos —<em>PONG, SNAKE, CATCH, PADDLE</em>—
-      ensamblados a mano y certificados con input real. Con tu <strong>mando de PS5 (DualSense) o Xbox</strong>,
-      <strong>pantalla completa</strong>, <strong>sonido</strong> y <strong>partidas guardables</strong>.
-      El motor es C99 compilado a WASM: bit-exacto contra el binario nativo (Blargg 12/12).</p>
+    <h1>Nova<span>Emu</span> <span class="vtag">2.0</span></h1>
+    <p class="lead"><strong>Una consola multissistema que vive en tu navegador.</strong>
+      Cinco juegos completos incluidos —<em>Cave Story, Celeste Classic, RoboRun, Super Boss Gaiden y GothicVania</em>—
+      y si tienes tus propias ROMs, las corre en <strong>14 sistemas</strong>: NES, SNES, Game Boy, GBA,
+      Mega Drive, N64, <strong>PlayStation 1</strong>, Atari 2600 y más.
+      Con <strong>mando DualSense/Xbox</strong>, <strong>pantalla completa</strong>, <strong>sonido</strong>
+      y <strong>save states</strong>. Tu ROM nunca sale de tu navegador.</p>
     <div class="badges">
-      <span class="badge green">✓ 4 juegos jugables</span>
-      <span class="badge green">✓ Blargg 12/12</span>
-      <span class="badge green">✓ 24 checks en navegador</span>
-      <span class="badge green">✓ DualSense / Xbox</span>
-      <span class="badge amber">wasm 19,8 KB</span>
-      <span class="badge">C99 · 0 dependencias</span>
+      <span class="badge green">✓ 5 juegos completos incluidos</span>
+      <span class="badge green">✓ 14 sistemas</span>
+      <span class="badge green">✓ DualSense / Xbox / teclado</span>
+      <span class="badge green">✓ Fullscreen + save states + sonido</span>
+      <span class="badge amber">cores RetroArch WASM</span>
+      <span class="badge">núcleo propio CHIP-8 certificado</span>
     </div>
     <div class="controls" style="justify-content:center">
-      <a class="btn primary" href="#biblioteca">🎮 Ver los juegos</a>
-      <a class="btn" href="./play.html?rom=nova-pong">Modo arcade a pantalla completa</a>
+      <a class="btn primary" href="#biblioteca">🎮 Jugar ahora</a>
+      <a class="btn" href="#cargar">📥 Cargar tu ROM</a>
       <a class="btn" href="./tests.html">Verificar en tu navegador</a>
     </div>
   </section>
 
   <!-- BIBLIOTECA -->
   <section class="block" id="biblioteca">
-    <h2>🎮 Biblioteca — clic en un juego y a jugar</h2>
-    <p class="sub">Se carga aquí abajo, en la consola de la página. Todos los juegos son obra propia
-      (ensamblador CHIP-8 con nuestro <span class="mono">c8asm</span>) y pasaron 17 certificaciones
-      nativas de input y determinismo antes de subir.</p>
-    <div class="lib-grid" id="lib-grid"><!-- tarjetas generadas --></div>
+    <h2>🎮 Biblioteca — clic y a jugar</h2>
+    <p class="sub">Juegos completos y <strong>legales</strong>: homebrew y freeware con licencia verificada,
+      incluidos en el repo para que funcione sin configurar nada. Se abren a pantalla completa en el player.</p>
+    <div class="lib-grid" id="lib-grid"><!-- generado --></div>
+
+    <h3 style="margin-top:26px">🕹️ Arcade Nova — obra propia del motor certificado (CHIP-8/S-CHIP)</h3>
+    <p class="sub">Cuatro juegos ensamblados a mano con nuestro <span class="mono">c8asm</span> sobre el
+      núcleo WASM bit-exacto (Blargg 12/12, goldens frame-300). Son la prueba de certificación del motor propio.</p>
+    <div class="lib-grid" id="nova-grid"><!-- generado --></div>
   </section>
 
-  <!-- CONSOLA EMBEBIDA -->
-  <section class="block" id="consola">
-    <h2>Consola</h2>
-    <div class="grid cols-2" id="nova-console">
-      <div class="panel">
-        <div class="screen-frame" data-drop>
-          <canvas data-screen width="64" height="32" aria-label="Pantalla del emulador"></canvas>
-        </div>
-        <div class="controls">
-          <button data-play class="primary">▶ Play</button>
-          <button data-reset>↺ Reset</button>
-          <button data-fullscreen title="Pantalla completa (o pulsa F en el juego)">⛶ Pantalla completa</button>
-          <span class="pad-indicator" data-pad-indicator>🎮 sin mando</span>
-        </div>
-        <div class="controls">
-          <span class="slotbtn-wrap" data-slots></span>
-        </div>
-        <div class="statusline">Estado: <span data-status>cargando WASM…</span></div>
-        <div class="statusline">ROM: <span data-rom-name style="color:var(--fg)">(ninguna)</span></div>
-        <div class="rom-note" data-rom-note>Pulsa una carátula arriba para cargar el juego.</div>
-      </div>
-
-      <div class="panel">
-        <h3>⌨️ Controles</h3>
-        <div class="keylegend">
-          <b>Teclado:</b> <b>Flechas / WASD</b> mueven · <b>Espacio o 5</b> = acción/start ·
-          mapa clásico 1234/QWER/ASDF/ZXCV<br>
-          <b>Game Boy:</b> X=A · Z=B · Enter=Start · Shift=Select<br>
-          <b>🎮 Mando PS5 / Xbox / genérico:</b> detectado al pulsar cualquier botón —
-          cruceta = direcciones, <b>Cruz/A = acción</b>, O/B = acción 2,
-          <b>Options/Start = start</b>. Deadzone radial: precisión total en el centro del stick.
-        </div>
-        <h3 style="margin-top:14px">💾 Partidas</h3>
-        <p style="font-size:13px;margin:6px 0">Clic en una ranura = <b>cargar</b> · Mayús+clic = <b>guardar</b>.
-          El estado se serializa en el WASM (formato NCS1, 6,2 KB) y vive en tu navegador.</p>
-        <div data-slots class="slotbtn-wrap"></div>
-        <h3 style="margin-top:14px">🔊 Sonido</h3>
-        <p style="font-size:13px;margin:6px 0">El buzzer de 1 bit del CHIP-8 suena por WebAudio al pulsar
-          cualquier tecla o botón (política de autoplay de los navegadores). PITU-PITU auténtico.</p>
-        <h3 style="margin-top:14px">Telemetría</h3>
-        <div class="telemetry">
-          <div class="tele"><div class="l">FPS</div><div class="v" data-fps>—</div></div>
-          <div class="tele"><div class="l">Frames</div><div class="v" data-frames>0</div></div>
-          <div class="tele"><div class="l">Hash FNV-1a</div><div class="v" data-hash>—</div></div>
-          <div class="tele"><div class="l">Golden</div><div class="v" data-golden>—</div></div>
-        </div>
-        <p style="margin-top:12px;font-size:13px">¿Paletas, quirks por juego, turbo y carga de tus propias ROMs?
-        <a href="./demo.html">Abre la consola completa →</a> · ¿solo jugar?
-        <a href="./play.html?rom=nova-pong">Modo arcade →</a></p>
-      </div>
+  <!-- CARGA TU ROM -->
+  <section class="block" id="cargar">
+    <h2>📥 Carga tu ROM — se queda en tu navegador</h2>
+    <p class="sub">Arrastra un archivo aquí (o elige con el botón): se detecta el sistema por la extensión,
+      se guarda <strong>solo en tu dispositivo</strong> (IndexedDB) y arranca el player. También puedes usar
+      una URL https directa. <span class="mono">.nes .sfc .smc .gb .gbc .gba .md .gen .sms .gg .z64 .n64 .v64 .nds .chd .pbp .cue .a26 .pce .vb .zip</span></p>
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Suelta aquí tu ROM">
+      <div style="font-size:40px;line-height:1">🕹️</div>
+      <div><b>Arrastra tu ROM aquí</b> o haz clic para elegir el archivo</div>
+      <div class="mono" style="font-size:12.5px;color:var(--fg-dim)">autodetección de sistema · sin subidas a ningún servidor</div>
     </div>
+    <input type="file" id="rom-input" hidden>
+    <div class="controls" style="margin-top:12px">
+      <input id="rom-url" type="url" placeholder="https://…/mi-juego.sfc (URL directa https)" style="flex:1;min-width:220px">
+      <button id="rom-url-go" class="btn primary">▶ Cargar desde URL</button>
+    </div>
+    <p class="sub" style="margin-top:8px">⚠️ Si el archivo es <span class="mono">.zip</span> se abre como ROM de
+      <strong>arcade (FBNeo)</strong>, o como consola si el zip contiene una sola ROM. PS1 recomendamos
+      <span class="mono">.chd</span> o <span class="mono">.pbp</span>.</p>
   </section>
 
-  <!-- ESCENA OCTUBRE 2026 -->
+  <!-- SISTEMAS -->
+  <section class="block" id="sistemas">
+    <h2>🖥️ Sistemas soportados</h2>
+    <p class="sub">Cores RetroArch compilados a WebAssembly (EmulatorJS), ejecutados 100% en tu navegador.
+      El mando (DualSense, Xbox, SNES-USB…) se mapea solo; el teclado siempre funciona.</p>
+    <div class="sys-grid" id="sys-grid"><!-- generado --></div>
+  </section>
+
+  <!-- ESCENA 2026 -->
   <section class="block" id="escena">
-    <h2>📰 Octubre 2026: la escena de emulación está que arde</h2>
-    <p class="sub">Este mes la emulación de PS5 en PC despegó de verdad. Nosotros celebramos la escena,
-      estudiamos sus técnicas (con citas) y aplicamos aquí lo portable a un navegador.</p>
-    <div class="grid cols-3">
-      <a class="panel" href="https://github.com/boykopovar/AnyPS5" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-        <h3>AnyPS5 · 49k ★</h3>
-        <p>Portado automático de ejecutables PS5 a PC (no emula: reenlaza código x86 nativo). Dreaming Sarah jugable, Dead Cells como exe nativo.</p>
+    <h2>📰 La escena real de la emulación — octubre 2026</h2>
+    <p class="sub">Verificamos los proyectos de la semana (Task 13, 27-oct-2026, datos de la API de GitHub + prensa).
+      <strong>La emulación PS5/Xbox Series es nativa (Vulkan/D3D12): no corre en ningún navegador hoy.</strong>
+      NovaEmu trae al navegador lo que sí es posible, hecho bien.</p>
+    <div class="escena-grid">
+      <a class="escena-card" href="https://github.com/boykopovar/AnyPS5" target="_blank" rel="noopener">
+        <b>AnyPS5</b><span class="stars">★ 49 046</span>
+        <p>Portado automático de .exe de PS5 a PC (76% libs, 50% shaders). Nativo Windows.</p>
       </a>
-      <a class="panel" href="https://github.com/KytyPS5/KytyPS5" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-        <h3>KytyPS5 · 10k ★</h3>
-        <p>Capa de traducción PS5 en C++, open-source este mes. 134 títulos con jugabilidad controlable. Push diario.</p>
+      <a class="escena-card" href="https://github.com/KytyPS5/KytyPS5" target="_blank" rel="noopener">
+        <b>KytyPS5</b><span class="stars">★ 10 014</span>
+        <p>Capa de traducción C++ estilo RPCS3. 134 títulos con render. Push 27-oct.</p>
       </a>
-      <a class="panel" href="https://github.com/sharpemu/sharpemu" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-        <h3>SharpEmu · 6,5k ★</h3>
-        <p>PS5 desde cero en C#: 6 juegos jugables a 60 fps (Astro Bot, Demon's Souls) y Ghost of Yotei llegó a gameplay.</p>
+      <a class="escena-card" href="https://github.com/sharpemu/sharpemu" target="_blank" rel="noopener">
+        <b>SharpEmu</b><span class="stars">★ 6 476</span>
+        <p>C#: 6 juegos jugables a 60 fps; gameplay de Ghost of Yotei el 11-oct.</p>
       </a>
-      <a class="panel" href="https://github.com/BrinooTk/PS5X360" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-        <h3>PS5X360 · 388 ★</h3>
-        <p>Xbox 360 corriendo DENTRO de una PS5 real (Xenia Canary + DualSense nativo + RADV Vulkan). Locura hermosa.</p>
+      <a class="escena-card" href="https://github.com/boykopovar/PS5X360" target="_blank" rel="noopener">
+        <b>PS5X360</b><span class="stars">★ 388</span>
+        <p>Xbox 360 corriendo DENTRO de PS5 real (base Xenia Canary, DualSense nativo).</p>
       </a>
-      <a class="panel" href="https://github.com/JoasASantos/REA-Prompts" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-        <h3>REAP (REA-Prompts) · 3k ★</h3>
-        <p>26 paquetes de prompts/skills para ingeniería inversa con REA — la metodología que usamos para estudiar estos repos.</p>
+      <a class="escena-card" href="https://github.com/jadyx/jadyx" target="_blank" rel="noopener">
+        <b>jadyx</b><span class="stars">★ 68</span>
+        <p>Switch nativo en Xbox Series X|S: Eden UWP + D3D12.</p>
       </a>
-      <a class="panel" href="./dev.html?doc=RESEARCH_PS5_XBOX" style="color:inherit;text-decoration:none">
-        <h3>Nuestro análisis →</h3>
-        <p>Qué es portable al navegador y qué no (spoiler: Vulkan/D3D12 nativo no viaja a WASM), con fuentes verificadas.</p>
+      <a class="escena-card" href="https://github.com/JoasASantos/REA-Prompts" target="_blank" rel="noopener">
+        <b>REA-Prompts</b><span class="stars">★ 3 011</span>
+        <p>Metodología REAP de ingeniería inversa (26 packs) — base de nuestro Lab y goldens.</p>
       </a>
     </div>
+    <p class="sub" style="margin-top:10px">Técnicas que adoptamos esta semana: testing por golden-frames
+      (estilo Kyty/SharpEmu), fallbacks de carga por capas (estilo AnyPS5) e input de mando nativo
+      (estilo PS5X360). El detalle está en el <a href="./dev.html">diario de desarrollo</a>.</p>
   </section>
 
-  <!-- CONSOLAS SOPORTADAS -->
-  <section class="block" id="consolas">
-    <h2>¿Qué consolas emula? (la verdad, actualizada a octubre 2026)</h2>
-    <div class="panel" style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr style="text-align:left;color:var(--fg-dim)"><th style="padding:8px">Consola</th><th style="padding:8px">¿Emulada aquí?</th><th style="padding:8px">Notas</th></tr>
-        <tr><td style="padding:8px;border-top:1px solid var(--border)"><b>CHIP-8 / S-CHIP</b> (1977)</td><td style="padding:8px;border-top:1px solid var(--border);color:#10b981"><b>✅ Sí, jugable ahora</b></td><td style="padding:8px;border-top:1px solid var(--border)">4 juegos incluidos + tus .ch8 arrastrando (en Demo)</td></tr>
-        <tr><td style="padding:8px;border-top:1px solid var(--border)"><b>Game Boy / DMG</b> (1989)</td><td style="padding:8px;border-top:1px solid var(--border);color:#10b981"><b>✅ Sí, CPU certificada</b></td><td style="padding:8px;border-top:1px solid var(--border)">SM83 11/11 Blargg; tus .gb arrastrando</td></tr>
-        <tr><td style="padding:8px;border-top:1px solid var(--border)">NES · SNES · GBC/GBA · PS1</td><td style="padding:8px;border-top:1px solid var(--border);color:#f59e0b"><b>🔜 Roadmap v1.2–v2.0</b></td><td style="padding:8px;border-top:1px solid var(--border)">Factible en WASM, escalón a escalón</td></tr>
-        <tr><td style="padding:8px;border-top:1px solid var(--border)">PS2 · Xbox · PS3 · Xbox 360</td><td style="padding:8px;border-top:1px solid var(--border);color:#ef4444"><b>❌ Solo nativo</b></td><td style="padding:8px;border-top:1px solid var(--border)">RPCS3/Xenia/xemu: necesitan PC potente</td></tr>
-        <tr><td style="padding:8px;border-top:1px solid var(--border)"><b>PS5 · Xbox Series X/S</b></td><td style="padding:8px;border-top:1px solid var(--border);color:#ef4444"><b>❌ No en navegador</b></td><td style="padding:8px;border-top:1px solid var(--border)">En PC nativo ya avanza (AnyPS5/KytyPS5/SharpEmu) — pero requiere Vulkan/D3D12: imposible dentro de una página web</td></tr>
-      </table>
-      <p style="font-size:13px;margin:10px 0 0;color:var(--fg-dim)">Lo que SÍ hacemos de la gen 9: tus mandos
-      <b>DualSense y Xbox</b> funcionan aquí vía Gamepad API — el mismo estándar que usan PS5X360 y jadyx.
-      Análisis completo: <a href="./dev.html?doc=RESEARCH_PS5_XBOX">Research →</a></p>
-    </div>
-  </section>
-
-  <!-- MÉTRICAS -->
+  <!-- LAB -->
   <section class="block">
-    <h2>Métricas medidas, no prometidas</h2>
-    <div class="grid cols-4">
-      <div class="panel stat"><div class="v">4+3</div><div class="l">juegos jugables + demos incluidas</div></div>
-      <div class="panel stat"><div class="v">17/17</div><div class="l">certificaciones nativas de los juegos (input real)</div></div>
-      <div class="panel stat"><div class="v">24</div><div class="l">checks en tu navegador</div></div>
-      <div class="panel stat"><div class="v">19,8 KB</div><div class="l">módulo WASM (-Os, con save states)</div></div>
-      <div class="panel stat"><div class="v">12/12</div><div class="l">Blargg en WASM (navegador)</div></div>
-      <div class="panel stat"><div class="v">6,2 KB</div><div class="l">save state NCS1 por partida</div></div>
-      <div class="panel stat"><div class="v">11/11</div><div class="l">Blargg cpu_instrs nativo</div></div>
-      <div class="panel stat"><div class="v">0</div><div class="l">dependencias (C99 + JS vanilla)</div></div>
-    </div>
-  </section>
-
-  <!-- CÓMO FUNCIONA -->
-  <section class="block">
-    <h2>¿Cómo funciona esta página?</h2>
-    <p class="sub">Tres pasos entre el C99 certificado y tu navegador — y la fórmula determinista que lo sostiene:</p>
     <div class="grid cols-3">
       <div class="panel">
-        <h3>1 · Núcleos C99 certificados</h3>
-        <p><code>src/chip8/</code> y <code>src/gb/</code> compilan el binario nativo de 38 KB. 117 tests,
-        12 evals, suite Blargg completa y ahora <b>17 certificaciones de input real</b> para los juegos
-        (<code>tests/test_games_input.c</code>).</p>
+        <h3>🧪 Lab del motor propio</h3>
+        <p>Nuestro núcleo C99→WASM bit-exacto: CHIP-8/S-CHIP y Game Boy, quirks, turbo, paletas y
+          captura en la <a href="./demo.html">Demo completa</a>. Certificado con Blargg 12/12.</p>
       </div>
       <div class="panel">
-        <h3>2 · Compilación a wasm32-wasi</h3>
-        <p><code>zig cc -target wasm32-wasi -mexec-model=reactor -Os</code>. El shim
-        (<code>src/wasm/wasm_api.c</code>) exporta <code>c8w_*</code> y, desde v1.1, los timers de audio y
-        el snapshot NCS1 — sin tocar la ejecución: los goldens siguen clavados.</p>
+        <h3>✅ Banco de pruebas</h3>
+        <p>Goldens bit-exacto, determinismo, Blargg y ahora <strong>checks web v2</strong> (ROMs, CDN,
+          player) en <a href="./tests.html">tests.html</a>. Todo corre en tu navegador.</p>
       </div>
       <div class="panel">
-        <h3>3 · La fórmula: determinismo</h3>
-        <p>RNG de semilla fija + físicas de reflexión entera (dy = −dy, sin trigonometría: el CHIP-8 no la
-        necesita) + IA por comparación de signo con el flag de acarreo. Resultado: el mismo input produce
-        siempre el mismo framebuffer — por eso los save states son bit-exactos.</p>
+        <h3>⚖️ Legal</h3>
+        <p>Los 5 juegos incluidos son homebrew/freeware con licencia verificada (ver ficha de cada uno).
+          No incluimos ROMs comerciales: <strong>carga las tuyas</strong> desde tu propio dispositivo.</p>
       </div>
     </div>
   </section>
-
-  <!-- DOCS -->
-  <section class="block">
-    <h2>Documentación</h2>
-    <div class="grid cols-3">
-      <a class="panel" href="./dev.html?doc=ARQUITECTURA" style="color:inherit;text-decoration:none"><h3>Arquitectura</h3><p>8 decisiones de diseño y su origen en los grandes emuladores.</p></a>
-      <a class="panel" href="./dev.html?doc=TECNICAS" style="color:inherit;text-decoration:none"><h3>Técnicas</h3><p>24 técnicas de RPCS3, shadPS4, xemu y Xenia con cita verificada.</p></a>
-      <a class="panel" href="./dev.html?doc=RESEARCH_PS5_XBOX" style="color:inherit;text-decoration:none"><h3>Research PS5/Xbox</h3><p>Por qué la gen 9 no cabe en un navegador (con fuentes).</p></a>
-      <a class="panel" href="./dev.html?doc=GUIA_PC_VIEJAS" style="color:inherit;text-decoration:none"><h3>Guía PC viejas</h3><p>Medidas reales y 3 rutas honestas para hardware humilde.</p></a>
-      <a class="panel" href="./dev.html?doc=ROADMAP" style="color:inherit;text-decoration:none"><h3>Roadmap</h3><p>v1.2 → v3.0 con verificación por escalón.</p></a>
-      <a class="panel" href="./dev.html?doc=INFORME_FINAL" style="color:inherit;text-decoration:none"><h3>Informe final</h3><p>7 lecciones (L1–L7) del proceso de construcción nocturno.</p></a>
-    </div>
-  </section>
-
 </main>
 
 <footer>
-  NovaEmu v1.1 · MIT · construido de noche tomando lo mejor de la escena de emulación
-  (RPCS3, shadPS4, xemu, Xenia — y los recién llegados AnyPS5, KytyPS5, SharpEmu, PS5X360).
-  <br><a href="#" data-gh>Repositorio</a> · <a href="./tests.html">Verificar este build en tu navegador</a>
+  NovaEmu 2.0 · MIT · cores de consola por <a href="https://emulatorjs.org" target="_blank" rel="noopener">EmulatorJS</a> (GPL-3.0, RetroArch WASM)
+  <br><a href="#" data-gh>Repositorio</a> · <a href="./demo.html">Lab</a> · <a href="./tests.html">Pruebas</a> · hecho para PCs viejas también
 </footer>
 
+<script src="./assets/catalog.js"></script>
+<script src="./assets/site.js"></script>
 <script type="module">
-  import { ConsoleUI } from "./assets/console.js";
-  import { NOVA_GAMES } from "./assets/nova-core.js";
-  import { installErrorOverlay, installVisibilityGuard, drawCover } from "./assets/nova-plus.js";
-  import "./assets/site.js";
+  const C = window.NOVA_CATALOG;
 
-  installErrorOverlay();
+  /* --- Biblioteca --- */
+  const lib = document.getElementById("lib-grid");
+  lib.innerHTML = C.GAMES.map(g => {
+    const s = C.SYSTEMS[g.system];
+    return `<a class="lib-card" href="./play.html?sys=${s.core}&file=${encodeURIComponent(g.file)}" style="--ca:${g.cover.a};--cb:${g.cover.b}">
+      <div class="cover"><span class="glyph">${g.cover.glyph}</span><span class="syspill" style="background:${s.color}">${s.label}</span></div>
+      <div class="meta"><b>${g.title}</b><span class="tag">${g.tag}</span>
+        <p>${g.desc}</p>
+        <span class="lic mono">${g.license}</span></div>
+      <span class="playbtn">▶ Jugar</span></a>`;
+  }).join("");
 
-  // Biblioteca: tarjetas con carátula procedural
-  const grid = document.getElementById("lib-grid");
-  for (const g of NOVA_GAMES) {
-    const card = document.createElement("button");
-    card.className = "lib-card" + (g.playable ? " playable" : "");
-    card.innerHTML = `<canvas width="256" height="128" aria-hidden="true"></canvas>
-      <div class="lib-meta"><b>${g.name}</b>
-      <span class="lib-genre">${g.genre}${g.playable ? " · ▶ JUGABLE" : ""}</span>
-      <span class="lib-controls">${g.controls}</span></div>`;
-    drawCover(card.querySelector("canvas"), g);
-    card.addEventListener("click", () => {
-      window.__novaUI?.loadNovaGame(g.id);
-      document.getElementById("consola").scrollIntoView({ behavior: "smooth", block: "start" });
+  /* --- Arcade Nova --- */
+  const nova = document.getElementById("nova-grid");
+  nova.innerHTML = C.NOVA_GAMES.map(g => `
+    <a class="lib-card small" href="./play.html?rom=${g.id}" style="--ca:#052e26;--cb:#064e3b">
+      <div class="cover"><span class="glyph">${g.title.replace("Nova ","").toUpperCase()}</span><span class="syspill" style="background:#10b981">CHIP-8 · núcleo propio</span></div>
+      <div class="meta"><b>${g.title}</b><span class="tag">${g.keys}</span><p>${g.desc}</p></div>
+      <span class="playbtn">▶ Jugar</span></a>`).join("");
+
+  /* --- Sistemas --- */
+  document.getElementById("sys-grid").innerHTML = Object.values(C.SYSTEMS).map(s => `
+    <div class="sys-card"><b style="color:${s.color}">${s.label}</b>
+      <span class="mono exts">${s.exts.map(e=>"."+e).join(" ")}</span>
+      <span class="note">${s.note}</span></div>`).join("");
+
+  /* --- Drag & drop + input --- */
+  const dz = document.getElementById("dropzone");
+  const inp = document.getElementById("rom-input");
+  const IDB_KEY = "pending-rom";
+  function openIDB() {
+    return new Promise((res, rej) => {
+      const rq = indexedDB.open("novaemu-fs", 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore("files");
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
     });
-    grid.appendChild(card);
   }
+  async function sendFile(file) {
+    try {
+      const db = await openIDB();
+      await new Promise((res, rej) => {
+        const tx = db.transaction("files", "readwrite");
+        tx.objectStore("files").put(file, IDB_KEY);
+        tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+      });
+      const core = C.detectCore(file.name);
+      if (!core) { alert("Extensión no reconocida. Soportadas: " + Object.keys(C.EXT2CORE).map(e=>"."+e).join(" ")); return; }
+      location.href = "./play.html?local=1";
+    } catch (e) {
+      alert("No se pudo guardar el archivo localmente: " + e.message);
+    }
+  }
+  dz.addEventListener("click", () => inp.click());
+  dz.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") inp.click(); });
+  inp.addEventListener("change", () => { if (inp.files[0]) sendFile(inp.files[0]); });
+  ["dragover", "dragenter"].forEach(ev => document.addEventListener(ev, e => {
+    e.preventDefault(); dz.classList.add("over");
+  }));
+  ["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => {
+    e.preventDefault(); if (ev === "drop" || e.target === document.documentElement) dz.classList.remove("over");
+  }));
+  document.addEventListener("drop", e => {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0];
+    if (f) sendFile(f);
+  });
 
-  const ui = new ConsoleUI(document.getElementById("nova-console"), { compact: true });
-  window.__novaUI = ui;
-  installVisibilityGuard(() => ui.pause());
-  ui.boot().then(() => ui.loadNovaGame("nova-pong"));
+  /* --- URL --- */
+  document.getElementById("rom-url-go").addEventListener("click", () => {
+    const u = document.getElementById("rom-url").value.trim();
+    if (!/^https:\/\/.+/i.test(u)) { alert("Pega una URL https directa al archivo de la ROM."); return; }
+    location.href = "./play.html?url=" + encodeURIComponent(u);
+  });
+  document.getElementById("rom-url").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("rom-url-go").click();
+  });
 </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NovaEmu — Modo arcade</title>
+<title>NovaEmu — Player</title>
 <link rel="stylesheet" href="./assets/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/></svg>">
 </head>
@@ -11,59 +11,219 @@
 <header class="site-header play-header">
   <a class="brand" href="./index.html">Nova<b>Emu</b></a>
   <nav>
-    <span class="pad-indicator" data-pad-indicator>🎮 sin mando</span>
+    <span class="pad-indicator" id="pad-indicator">🎮 sin mando</span>
     <a href="./index.html#biblioteca">Biblioteca</a>
     <a href="./tests.html">Pruebas</a>
   </nav>
 </header>
 
 <main class="wrap play-wrap">
-  <div class="play-console" id="nova-console">
-    <div class="screen-frame" data-drop>
-      <canvas data-screen width="64" height="32" aria-label="Pantalla del emulador"></canvas>
+  <!-- MODO LEGADO: núcleo propio CHIP-8 (rom=nova-*) -->
+  <div id="legacy-console" hidden>
+    <div class="play-console" id="nova-console">
+      <div class="screen-frame" data-drop>
+        <canvas data-screen width="64" height="32" aria-label="Pantalla del emulador"></canvas>
+      </div>
+      <div class="controls play-controls">
+        <button data-play class="primary">▶ Play</button>
+        <button data-reset>↺</button>
+        <button data-fullscreen title="Pantalla completa">⛶</button>
+        <span data-slots class="slotbtn-wrap"></span>
+      </div>
+      <div class="statusline play-status">
+        <span data-rom-name style="color:var(--fg)"></span> ·
+        <span data-status>cargando…</span>
+      </div>
     </div>
-    <div class="controls play-controls">
-      <button data-play class="primary">▶ Play</button>
-      <button data-reset>↺</button>
-      <button data-fullscreen title="Pantalla completa">⛶</button>
-      <span data-slots class="slotbtn-wrap"></span>
-    </div>
-    <div class="statusline play-status">
-      <span data-rom-name style="color:var(--fg)">(elige un juego)</span> ·
-      <span data-status>cargando…</span>
-      <span class="rom-note" data-rom-note></span>
+    <div class="play-hint">
+      <b>Flechas/WASD</b> mueven · <b>Espacio o 5</b> = acción · <b>F</b> = pantalla completa ·
+      <b>🎮 DualSense/Xbox</b> soportado
     </div>
   </div>
 
-  <div class="play-hint">
-    <b>Flechas/WASD</b> mueven · <b>Espacio o 5</b> = start/acción · <b>F</b> = pantalla completa ·
-    <b>🎮 DualSense/Xbox</b>: cruceta + Cruz/A = acción · <b>Móvil</b>: usa el pad táctil de la Demo
-    o conecta un mando Bluetooth
+  <!-- MODO EMULATORJS: consolas reales -->
+  <div id="ejs-shell" hidden>
+    <div class="ejs-meta">
+      <div>
+        <h2 id="ejs-title" style="margin:0 0 4px">…</h2>
+        <span class="mono" id="ejs-sub" style="color:var(--fg-dim);font-size:13px"></span>
+      </div>
+      <div class="controls" id="ejs-side">
+        <a class="btn" id="ejs-source" href="#" target="_blank" rel="noopener" hidden>Fuente / licencia ↗</a>
+        <a class="btn" href="./index.html#cargar">Cargar otra ROM</a>
+      </div>
+    </div>
+    <div class="screen-frame ejs-frame">
+      <div id="ejs-game"></div>
+      <div id="ejs-loading" class="ejs-loading">
+        <div class="spinner"></div>
+        <div id="ejs-loading-msg">Descargando núcleo del sistema… (unos MB, solo la primera vez)</div>
+        <button id="ejs-retry" class="btn" hidden>↻ Reintentar</button>
+      </div>
+    </div>
+    <div class="play-hint" id="ejs-hint"></div>
+  </div>
+
+  <!-- ERROR BLOQUEANTE -->
+  <div id="fatal" hidden style="padding:40px 0">
+    <div class="panel" style="border-color:var(--red)">
+      <h3>No se pudo cargar el núcleo de emulación</h3>
+      <p id="fatal-msg"></p>
+      <div class="controls">
+        <button class="btn primary" onclick="location.reload()">↻ Reintentar</button>
+        <a class="btn" href="./index.html">← Volver</a>
+      </div>
+    </div>
   </div>
 </main>
 
+<script src="./assets/catalog.js"></script>
+<script src="./assets/site.js"></script>
 <script type="module">
   import { ConsoleUI } from "./assets/console.js";
   import { installErrorOverlay, installVisibilityGuard } from "./assets/nova-plus.js";
-  import "./assets/site.js";
 
   installErrorOverlay();
-  const ui = new ConsoleUI(document.getElementById("nova-console"), { compact: true });
-  window.__novaUI = ui;
-  installVisibilityGuard(() => ui.pause());
-
-  // tecla F = pantalla completa (en juego, no en inputs)
-  window.addEventListener("keydown", (e) => {
-    if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey &&
-        !e.target?.closest?.("input, select, textarea")) {
-      e.preventDefault();
-      ui.toggleFullscreen();
-    }
-  });
-
+  const C = window.NOVA_CATALOG;
   const params = new URLSearchParams(location.search);
-  const rom = params.get("rom") ?? "nova-pong";
-  ui.boot().then(() => ui.loadNovaGame(rom));
+  const $ = (id) => document.getElementById(id);
+
+  /* ---------- indicador de mando (ambos modos) ---------- */
+  const padEl = $("pad-indicator");
+  function pollPads() {
+    const pads = (navigator.getGamepads?.() || []).filter(Boolean);
+    padEl.textContent = pads.length ? `🎮 ${pads[0].id.slice(0, 34)}` : "🎮 sin mando";
+    padEl.style.color = pads.length ? "var(--accent-2)" : "";
+  }
+  setInterval(pollPads, 1500); pollPads();
+
+  /* ================= MODO LEGADO (núcleo propio) ================= */
+  const romId = params.get("rom");
+  const NOVA_IDS = C.NOVA_GAMES.map(g => g.id);
+  if (romId && NOVA_IDS.includes(romId)) {
+    $("legacy-console").hidden = false;
+    const ui = new ConsoleUI(document.getElementById("nova-console"), { compact: true });
+    window.__novaUI = ui;
+    installVisibilityGuard(() => ui.pause());
+    window.addEventListener("keydown", (e) => {
+      if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey &&
+          !e.target?.closest?.("input, select, textarea")) {
+        e.preventDefault(); ui.toggleFullscreen();
+      }
+    });
+    ui.boot().then(() => ui.loadNovaGame(romId));
+  }
+  /* ================= MODO EMULATORJS ================= */
+  else (async () => {
+    $("ejs-shell").hidden = false;
+
+    let core = null, gameUrl = null, gameName = "ROM";
+    const local = params.get("local") === "1";
+    const extUrl = params.get("url");
+    const sysParam = params.get("sys");
+    const fileParam = params.get("file");
+    const VALID_CORES = Object.fromEntries(Object.values(C.SYSTEMS).map(s => [s.core, s]));
+
+    function fatal(msg) {
+      $("ejs-shell").hidden = true; $("legacy-console").hidden = true;
+      $("fatal").hidden = false; $("fatal-msg").textContent = msg;
+      return null;
+    }
+    async function readPending() {
+      try {
+        const db = await new Promise((res, rej) => {
+          const rq = indexedDB.open("novaemu-fs", 1);
+          rq.onupgradeneeded = () => rq.result.createObjectStore("files");
+          rq.onsuccess = () => res(rq.result);
+          rq.onerror = () => rej(rq.error);
+        });
+        const f = await new Promise((res, rej) => {
+          const tx = db.transaction("files", "readonly");
+          const rq = tx.objectStore("files").get("pending-rom");
+          rq.onsuccess = () => res(rq.result || null);
+          rq.onerror = () => rej(rq.error);
+        });
+        return f;
+      } catch { return null; }
+    }
+
+    if (fileParam) {
+      const game = C.GAMES.find(g => g.file === fileParam);
+      if (!game || !/^[A-Za-z0-9._-]+$/.test(fileParam)) return fatal("Archivo no reconocido en el catálogo.");
+      core = VALID_CORES[sysParam]?.core || C.SYSTEMS[game.system].core;
+      gameUrl = C.gameUrl(game); gameName = game.title;
+      $("ejs-title").textContent = game.title;
+      $("ejs-sub").textContent = `${C.SYSTEMS[game.system].label} · ${game.tag} · ${game.license}`;
+      $("ejs-source").hidden = false; $("ejs-source").href = game.source;
+      $("ejs-hint").innerHTML = `<b>${game.controls}</b> · en el menú ⚙ del player: mapear mando, save states, rewind, capturas y velocidad`;
+    } else if (extUrl) {
+      if (!/^https:\/\//i.test(extUrl)) return fatal("Solo se permiten URLs https.");
+      core = sysParam && VALID_CORES[sysParam] ? sysParam : null;
+      gameUrl = extUrl;
+      gameName = decodeURIComponent(extUrl.split("/").pop() || "ROM");
+      if (!core) core = C.detectCore(gameName) || "nes";
+      $("ejs-title").textContent = gameName;
+      $("ejs-sub").textContent = `URL externa · sistema: ${VALID_CORES[core]?.label || core}`;
+      $("ejs-hint").innerHTML = `<b>Si el sistema no coincide</b>, vuelve atrás y usa «Cargar desde URL» con ?sys= correcto.`;
+    } else if (local) {
+      /* leer de IndexedDB (index.html guardó el File ahí) */
+      const f = await readPending();
+      if (!f) return fatal("No encuentro la ROM pendiente. Vuelve a la biblioteca y arrástrala de nuevo.");
+      core = (sysParam && VALID_CORES[sysParam]) ? sysParam : (C.detectCore(f.name) || "nes");
+      gameUrl = URL.createObjectURL(f);
+      gameName = f.name;
+      $("ejs-title").textContent = f.name;
+      $("ejs-sub").textContent = `ROM local (${(f.size/1024/1024).toFixed(1)} MB) · sistema: ${VALID_CORES[core]?.label || core} · no ha salido de tu dispositivo`;
+      $("ejs-hint").innerHTML = `<b>Menú ⚙ del player</b>: mapear mando, save states, rewind, capturas y velocidad`;
+    } else {
+      return fatal("Faltan parámetros. Usa la biblioteca: index.html#biblioteca");
+    }
+
+    /* ---- cargador con fallback CDN + timeout ---- */
+    const CDNS = [
+      "https://cdn.emulatorjs.org/stable/data/",
+      "https://cdn.jsdelivr.net/npm/@emulatorjs/emulatorjs@4.2.3/data/"
+    ];
+    const loadMsg = $("ejs-loading-msg");
+    window.EJS_player = "#ejs-game";
+    window.EJS_core = core;
+    window.EJS_gameUrl = gameUrl;
+    window.EJS_gameName = gameName.replace(/\.[a-z0-9]+$/i, "");
+    window.EJS_startOnLoaded = true;
+    window.EJS_color = "#10b981";
+    window.EJS_backgroundColor = "#09090b";
+    window.EJS_volume = 0.6;
+    window.EJS_language = "es-ES";
+    window.EJS_defaultOptions = Object.assign(
+      { "save-state-location": "browser" },
+      C.GAMES.find(g => g.file === fileParam && g.opts)?.opts || {}
+    );
+    window.EJS_ready = () => { $("ejs-loading").hidden = true; };
+    window.EJS_onGameStart = () => { $("ejs-loading").hidden = true; };
+    function injectLoader(base) {
+      /* OBLIGATORIO: sin EJS_pathtodata el loader resuelve rutas contra el pathname de la página
+       * (new URL(currentScript.src).pathname) y busca los núcleos en nuestro origen → 404. */
+      window.EJS_pathtodata = base;
+      return new Promise((res, rej) => {
+        const s = document.createElement("script");
+        const timer = setTimeout(() => { s.remove(); rej(new Error("timeout")); }, 20000);
+        s.src = base + "loader.js";
+        s.onload = () => { clearTimeout(timer); res(); };
+        s.onerror = () => { clearTimeout(timer); s.remove(); rej(new Error("red")); };
+        document.head.appendChild(s);
+      });
+    }
+    (async () => {
+      for (let i = 0; i < CDNS.length; i++) {
+        loadMsg.textContent = i === 0
+          ? "Descargando núcleo del sistema… (unos MB, solo la primera vez)"
+          : "CDN principal no responde — probando réplica jsDelivr…";
+        try { await injectLoader(CDNS[i]); return; } catch (e) { /* siguiente */ }
+      }
+      $("ejs-loading").hidden = true;
+      fatal("No hay ruta al CDN de núcleos (¿red corporativa/adblock?). Prueba otra red o descarga el repo y sirve emulatorjs localmente: https://emulatorjs.org/docs4devs");
+    })();
+  })();
 </script>
 </body>
 </html>
