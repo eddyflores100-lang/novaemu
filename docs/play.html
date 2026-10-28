@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NovaEmu — Modo arcade</title>
+<link rel="stylesheet" href="./assets/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/></svg>">
+</head>
+<body class="play-body">
+<header class="site-header play-header">
+  <a class="brand" href="./index.html">Nova<b>Emu</b></a>
+  <nav>
+    <span class="pad-indicator" data-pad-indicator>🎮 sin mando</span>
+    <a href="./index.html#biblioteca">Biblioteca</a>
+    <a href="./tests.html">Pruebas</a>
+  </nav>
+</header>
+
+<main class="wrap play-wrap">
+  <div class="play-console" id="nova-console">
+    <div class="screen-frame" data-drop>
+      <canvas data-screen width="64" height="32" aria-label="Pantalla del emulador"></canvas>
+    </div>
+    <div class="controls play-controls">
+      <button data-play class="primary">▶ Play</button>
+      <button data-reset>↺</button>
+      <button data-fullscreen title="Pantalla completa">⛶</button>
+      <span data-slots class="slotbtn-wrap"></span>
+    </div>
+    <div class="statusline play-status">
+      <span data-rom-name style="color:var(--fg)">(elige un juego)</span> ·
+      <span data-status>cargando…</span>
+      <span class="rom-note" data-rom-note></span>
+    </div>
+  </div>
+
+  <div class="play-hint">
+    <b>Flechas/WASD</b> mueven · <b>Espacio o 5</b> = start/acción · <b>F</b> = pantalla completa ·
+    <b>🎮 DualSense/Xbox</b>: cruceta + Cruz/A = acción · <b>Móvil</b>: usa el pad táctil de la Demo
+    o conecta un mando Bluetooth
+  </div>
+</main>
+
+<script type="module">
+  import { ConsoleUI } from "./assets/console.js";
+  import { installErrorOverlay, installVisibilityGuard } from "./assets/nova-plus.js";
+  import "./assets/site.js";
+
+  installErrorOverlay();
+  const ui = new ConsoleUI(document.getElementById("nova-console"), { compact: true });
+  window.__novaUI = ui;
+  installVisibilityGuard(() => ui.pause());
+
+  // tecla F = pantalla completa (en juego, no en inputs)
+  window.addEventListener("keydown", (e) => {
+    if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey &&
+        !e.target?.closest?.("input, select, textarea")) {
+      e.preventDefault();
+      ui.toggleFullscreen();
+    }
+  });
+
+  const params = new URLSearchParams(location.search);
+  const rom = params.get("rom") ?? "nova-pong";
+  ui.boot().then(() => ui.loadNovaGame(rom));
+</script>
+</body>
+</html>

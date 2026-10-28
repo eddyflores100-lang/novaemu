@@ -1,7 +1,8 @@
 /* NovaEmu Web — consola interactiva (canvas, bucle rAF, entrada, telemetría).
  * Usada por index.html (modo compacto) y demo.html (modo completo).
  */
-import { NovaEmu, PALETTES, paletteU32, C8_KEYS, GB_KEYS, ROM_CATALOG } from "./nova-core.js";
+import { NovaEmu, PALETTES, paletteU32, C8_KEYS, GB_KEYS, ROM_CATALOG, NOVA_GAMES } from "./nova-core.js";
+import { GamepadManager, FullscreenManager, Buzzer, SaveStates } from "./nova-plus.js";
 
 /* Traduce e.key → código estilo KeyboardEvent.code (fallback para eventos
  * que llegan sin e.code: teclados remotos, automatización, etc.) */
@@ -146,7 +147,7 @@ export class ConsoleUI {
     if (this.el.catalog) this.el.catalog.addEventListener("click", async (e) => {
       const btn = e.target.closest("button[data-rom]");
       if (!btn) return;
-      const entry = ROM_CATALOG.find((r) => r.id === btn.dataset.rom);
+      const entry = NOVA_GAMES.find((r) => r.id === btn.dataset.rom) ?? ROM_CATALOG.find((r) => r.id === btn.dataset.rom);
       if (entry) await this.loadFromCatalog(entry);
     });
 
@@ -163,41 +164,84 @@ export class ConsoleUI {
     this.bindKeyboard();
     this.bindTouch();
     this.bindFullscreen();
-    this._padPrev = {};
-    this._padShown = false;
+    this.buzzer = new Buzzer();
+    this.saves = new SaveStates();
+    this.romId = null;
+    // Gamepad API con deadzone radial y transiciones (reemplaza al poller simple)
+    this.padMgr = new GamepadManager((st) => this.applyPadState(st));
+    this.padState = {};
+  }
+
+  /** Traduce el estado del mando (standard mapping) a teclas del sistema. */
+  applyPadState(st) {
+    this.padState = st;
+    if (!this.emu) return;
+    const gb = this.emu.sys === "gb";
+    const press = (cond, k) => this.emu.key(k, !!cond);
+    if (gb) {
+      press(st.a, 0); press(st.b, 1); press(st.select, 2); press(st.start, 3);
+      press(st.right, 4); press(st.left, 5); press(st.up, 6); press(st.down, 7);
+    } else {
+      press(st.up, 0x2); press(st.down, 0x8); press(st.left, 0x4); press(st.right, 0x6);
+      press(st.a, 0x5); press(st.b, 0x6); press(st.x, 0x7); press(st.y, 0x8);
+      press(st.start, 0xC); press(st.select, 0xF);
+    }
+    this.setPadIndicator(st);
+  }
+
+  setPadIndicator(st) {
+    const el = this.root.querySelector("[data-pad-indicator]");
+    if (!el) return;
+    const any = Object.keys(st || {}).some((k) => st[k]);
+    el.textContent = any ? "🎮 activo" : "🎮 conectado";
+    el.classList.toggle("on", true);
   }
 
   /* ------------------- pantalla completa --------------------------- */
   bindFullscreen() {
     const btn = this.root.querySelector("[data-fullscreen]");
     if (btn) btn.addEventListener("click", () => this.toggleFullscreen());
+    const target = this.el.drop || this.root.querySelector(".screen-frame") || this.root;
+    this.fsMgr = new FullscreenManager(target, () => this.theaterMode());
     const onChange = () => this.fitFullscreen();
     document.addEventListener("fullscreenchange", onChange);
     document.addEventListener("webkitfullscreenchange", onChange);
+    window.addEventListener("resize", onChange);
   }
 
   toggleFullscreen() {
-    const target = this.el.drop || this.root.querySelector(".screen-frame") || this.root;
-    const doc = document;
-    const active = doc.fullscreenElement || doc.webkitFullscreenElement;
-    if (!active) {
-      const req = target.requestFullscreen || target.webkitRequestFullscreen;
-      if (req) req.call(target);
-      else this.toast("✗ Tu navegador no soporta pantalla completa", "err", 6000);
-    } else {
-      const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
-      if (exit) exit.call(doc);
-    }
+    this.fsMgr?.toggle();
   }
 
   fitFullscreen() {
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
     const cv = this.renderer.cv;
-    if (!fsEl) { cv.style.width = ""; cv.style.height = ""; return; }
+    const frame = this.el.drop || cv.parentElement;
+    if (!fsEl) {
+      frame?.classList.remove("theater");
+      cv.style.width = ""; cv.style.height = "";
+      return;
+    }
     const w = this.emu ? this.emu.fbW() : 64, h = this.emu ? this.emu.fbH() : 32;
+    // escalado entero cuando quepa (píxeles limpios), fraccional si no cabe
     const s = Math.min(window.innerWidth / w, window.innerHeight / h);
-    cv.style.width = Math.floor(w * s) + "px";
-    cv.style.height = Math.floor(h * s) + "px";
+    const si = Math.max(1, Math.floor(s));
+    const use = si >= 1 && si <= s ? si : s;
+    cv.style.width = Math.floor(w * use) + "px";
+    cv.style.height = Math.floor(h * use) + "px";
+  }
+
+  /** Fallback iOS/Safari sin API: modo teatro (overlay fijo a pantalla llena). */
+  theaterMode() {
+    const frame = this.el.drop || this.root.querySelector(".screen-frame") || this.root;
+    if (frame.classList.contains("theater")) {
+      frame.classList.remove("theater");
+      this.renderer.cv.style.width = ""; this.renderer.cv.style.height = "";
+      this.toast("Modo teatro desactivado", "ok", 2500);
+    } else {
+      frame.classList.add("theater");
+      this.toast("Modo teatro (tu navegador no expone pantalla completa)", "ok", 4000);
+    }
   }
 
   /* ------------------------- entrada ------------------------------ */
@@ -248,43 +292,8 @@ export class ConsoleUI {
   /* Gamepad USB/Bluetooth vía Gamepad API (mapeo estándar). Se sondea
    * cada frame y solo se envían transiciones (borde) al núcleo. */
   pollGamepad() {
-    if (!navigator.getGamepads || !this.emu) return;
-    const pad = Array.from(navigator.getGamepads()).find(Boolean);
-    const prev = this._padPrev || {};
-    const next = {};
-    if (pad) {
-      const b = (i) => !!(pad.buttons[i]?.pressed);
-      const ax = pad.axes || [];
-      const dp = {
-        up:    b(12) || ax[1] < -0.5,
-        down:  b(13) || ax[1] >  0.5,
-        left:  b(14) || ax[0] < -0.5,
-        right: b(15) || ax[0] >  0.5,
-      };
-      if (this.emu.sys === "gb") {
-        next["gb:0"] = b(0); next["gb:1"] = b(1);
-        next["gb:2"] = b(8); next["gb:3"] = b(9);
-        next["gb:6"] = dp.up; next["gb:7"] = dp.down;
-        next["gb:5"] = dp.left; next["gb:4"] = dp.right;
-      } else {
-        next["c8:2"] = dp.up; next["c8:8"] = dp.down;
-        next["c8:4"] = dp.left; next["c8:6"] = dp.right || b(1);
-        next["c8:5"] = b(0); next["c8:c"] = b(2); next["c8:d"] = b(3);
-      }
-      if (!this._padShown && pad.id) {
-        this._padShown = true;
-        this.toast("🎮 Gamepad detectado: " + String(pad.id).slice(0, 44), "ok", 3500);
-      }
-    }
-    const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
-    for (const key of keys) {
-      const now = !!next[key], was = !!prev[key];
-      if (now === was) continue;
-      const [sys, kk] = key.split(":");
-      const gbActive = this.emu.sys === "gb";
-      if ((sys === "gb") === gbActive) this.emu.key(+kk, now);
-    }
-    this._padPrev = next;
+    const st = this.padMgr?.poll();
+    if (st && this.emu) this.buzzer.set(this.emu.sys !== "gb" ? this.emu.w.c8w_st?.() : 0, this.emu.w.c8w_dt?.());
   }
 
   /* Aviso flotante sobre la pantalla (éxito verde / error rojo). */
@@ -386,11 +395,23 @@ export class ConsoleUI {
     if (!this.compact && this.el.romNote) this.el.romNote.textContent = entry.note ?? "";
   }
 
-  async loadRom(bytes, name, sys) {
+  async loadRom(bytes, name, sys, cfg = null) {
     if (!this.emu) await this.bootDelay();
     this.pause();
     this.emu.romBytes = null; // evita recarga implícita en init()
     this.emu.init(sys);
+    // configuración por juego (biblioteca NOVA): ips y quirks explícitos
+    if (cfg) {
+      if (cfg.ips && sys !== "gb") this.ips = cfg.ips;
+      if (cfg.quirks && sys !== "gb" && this.emu.w.c8w_set_quirk) {
+        cfg.quirks.forEach((v, i) => this.emu.setQuirk(i, !!v));
+        const presetSel = this.root.querySelector("[data-quirk-preset]");
+        if (presetSel) presetSel.value = "custom";
+      }
+      this.romId = cfg.id;
+    } else {
+      this.romId = null;
+    }
     const ok = this.emu.loadRom(bytes);
     if (!ok) { this.setStatus(`ROM inválida para ${sys}: ${name}`); return; }
     this.romName = name;
@@ -497,6 +518,10 @@ export class ConsoleUI {
     if (this.emu.sys === "gb" || !this.emu.exited()) {
       this.renderer.draw(this.emu.fb(), this.emu.fbW(), this.emu.fbH());
     }
+    // buzzer CHIP-8: el timer de sonido manda (si el wasm lo expone)
+    if (this.emu.sys !== "gb" && this.emu.w.c8w_st) {
+      this.buzzer.set(this.emu.w.c8w_st(), this.emu.w.c8w_dt());
+    }
     if (this.goldenArmed && !this.goldenOk && this.frames === this.goldenArmed.frames) {
       if (this.emu.hashHex() === this.goldenArmed.hash) {
         this.goldenOk = true;
@@ -535,4 +560,83 @@ export class ConsoleUI {
   }
 
   setStatus(s) { if (this.el.status) this.el.status.textContent = s; }
+
+  /* ---------------- save states (wasm NCS1) ------------------------ */
+  saveState(slot) {
+    if (!this.emu || this.emu.sys === "gb" || !this.emu.w.c8w_snap) {
+      this.toast("✗ Guardado no disponible aquí (solo CHIP-8 en este build)", "err", 5000);
+      return;
+    }
+    const size = this.emu.w.c8w_snap_size();
+    const ptr = this.emu.w.nova_alloc(size);
+    const written = this.emu.w.c8w_snap(ptr);
+    const bytes = new Uint8Array(this.emu.w.memory.buffer.slice(ptr, ptr + written));
+    const id = this.romId ?? this.romName;
+    const ok = this.saves.save(slot, id, this.emu.sys, bytes);
+    this.toast(ok ? `✓ Partida guardada en ranura ${slot + 1}` : "✗ Sin espacio para guardar", ok ? "ok" : "err", 4000);
+    this.refreshSlots();
+  }
+
+  loadState(slot) {
+    if (!this.emu || !this.emu.w.c8w_restore) return;
+    const id = this.romId ?? this.romName;
+    const p = this.saves.load(slot, id);
+    if (!p) {
+      this.toast(`✗ Ranura ${slot + 1} vacía o de otro juego`, "err", 4000);
+      return;
+    }
+    const ptr = this.emu.w.nova_alloc(p.bytes.length);
+    this.u8set(p.bytes, ptr);
+    const rc = this.emu.w.c8w_restore(ptr);
+    if (rc === 0) {
+      this.renderer.draw(this.emu.fb(), this.emu.fbW(), this.emu.fbH());
+      this.toast(`✓ Partida cargada de la ranura ${slot + 1}`, "ok", 4000);
+      this.play();
+    } else {
+      this.toast("✗ Snapshot incompatible", "err", 4000);
+    }
+  }
+
+  u8set(arr, ptr) {
+    const u8 = new Uint8Array(this.emu.w.memory.buffer);
+    for (let i = 0; i < arr.length; i++) u8[ptr + i] = arr[i];
+  }
+
+  refreshSlots() {
+    const wrap = this.root.querySelector("[data-slots]");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    for (let i = 0; i < 2; i++) {
+      const info = this.saves.peek(i);
+      const b = document.createElement("button");
+      b.className = "slotbtn";
+      const when = info ? new Date(info.when).toLocaleString() : "vacía";
+      b.innerHTML = `<b>Ranura ${i + 1}</b><span>${info ? info.romId + " · " + when : "vacía"}</span>`;
+      b.title = "Clic: cargar · Mayús+clic: guardar";
+      b.addEventListener("click", (e) => {
+        this.buzzer.unlock();
+        if (e.shiftKey) this.saveState(i); else this.loadState(i);
+      });
+      wrap.appendChild(b);
+    }
+  }
+
+  /** Carga un juego de la biblioteca NOVA por id (una sola carga, con cfg). */
+  async loadNovaGame(id) {
+    const entry = NOVA_GAMES.find((g) => g.id === id) ?? ROM_CATALOG.find((r) => r.id === id);
+    if (!entry) return false;
+    this.buzzer.unlock(); // gesto de usuario: desbloquea audio
+    const res = await fetch(entry.url);
+    if (!res.ok) { this.setStatus(`No se pudo cargar ${entry.url}: ${res.status}`); return false; }
+    const buf = new Uint8Array(await res.arrayBuffer());
+    await this.loadRom(buf, entry.name, entry.system,
+      { id: entry.id, ips: entry.ips, quirks: entry.quirks });
+    this.goldenArmed = entry.golden ?? null;
+    this.goldenOk = false;
+    this.updateGolden();
+    if (!this.compact && this.el.romNote) this.el.romNote.textContent = entry.note ?? "";
+    this.romNote = entry.note ?? "";
+    this.refreshSlots();
+    return true;
+  }
 }

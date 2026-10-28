@@ -39,6 +39,20 @@ demos: build/genrom
 test: all demos
 	bash tests/run_evals.sh
 
+# Juegos NOVA: ensamblar (requiere python3) + certificar input nativo
+games:
+	python3 ../scripts/c8asm.py ../scripts/games/nova_pong.s8 -o tests/roms/gen/nova_pong.ch8
+	python3 ../scripts/c8asm.py ../scripts/games/nova_snake.s8 -o tests/roms/gen/nova_snake.ch8
+	python3 ../scripts/c8asm.py ../scripts/games/nova_catch.s8 -o tests/roms/gen/nova_catch.ch8
+	cp tests/roms/gen/nova_pong.ch8 tests/roms/gen/nova_snake.ch8 tests/roms/gen/nova_catch.ch8 docs/assets/roms/
+
+games-test: build/games-test
+	./build/games-test
+
+build/games-test: tests/test_games_input.c src/common/nova.c src/chip8/chip8.c src/gb/gb_bus.c src/gb/gb_ppu.c src/gb/gb_cpu.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -o $@ tests/test_games_input.c src/common/nova.c src/chip8/chip8.c src/gb/gb_bus.c src/gb/gb_ppu.c src/gb/gb_cpu.c
+
 # test de entrada del juego jugable nova_paddle (6 checks de teclado y límites)
 paddle-test: build/genrom
 	$(CC) $(CFLAGS) -o build/paddle-test tests/test_paddle_input.c $(SRC_COMMON) $(SRC_CHIP8)

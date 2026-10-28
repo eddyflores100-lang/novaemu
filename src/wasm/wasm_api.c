@@ -188,6 +188,127 @@ EXP("c8w_ops_lo")     u32  c8w_ops_lo(void)  { return (u32)g_c8.opcount; }
 EXP("c8w_ops_hi")     u32  c8w_ops_hi(void)  { return (u32)(g_c8.opcount >> 32); }
 
 /* ------------------------------------------------------------------ *
+ * Exportaciones aditivas v1.1 (no alteran la ejecución: los goldens
+ * NE-E003/E004 se mantienen bit a bit).
+ *   c8w_st/c8w_dt  → timer de sonido/retraso (buzzer WebAudio)
+ *   c8w_snap*      → snapshot/restore del estado CHIP-8 (save states)
+ * Formato del snapshot (little-endian):
+ *   u32 magic 'NCS1' | u32 sys | u32 screen_w | u32 screen_h
+ *   u8 quirks[7] | u8 extended | u8 exited | i32 wait_key
+ *   u8 v[16] | u8 dt | u8 st | u8 keys[16] | u8 rpl[8]
+ *   u16 i,pc,sp | u16 stack[16] | u32 rng | u64 opcount
+ *   u8 mem[0x1000] | u32 fb_w | u32 fb_h | u8 px[fb_w*fb_h]
+ * ------------------------------------------------------------------ */
+#define NCS1_MAGIC 0x3148534Eu  /* "NSH1" little-endian: N,S,1 de NovaSnap */
+#define NCS1_SIZE  (4*4 + 7 + 2 + 4 + 16 + 1 + 1 + 16 + 8 + 2*3 + 2*16 + 4 + 8 + 0x1000 + 4 + 4)
+/* nota: los u16 se escriben alineados de 2 en 2 sobre el flujo */
+
+static u32 ncs1_off = 0;
+static u8 *ncs1_buf = NULL;
+
+static void ncs1_put8(u8 v)  { ncs1_buf[ncs1_off++] = v; }
+static void ncs1_put16(u16 v){ ncs1_put8((u8)v); ncs1_put8((u8)(v >> 8)); }
+static void ncs1_put32(u32 v){ ncs1_put16((u16)v); ncs1_put16((u16)(v >> 16)); }
+static void ncs1_put64(u64 v){ ncs1_put32((u32)v); ncs1_put32((u32)(v >> 32)); }
+static u8   ncs1_get8(void)  { return ncs1_buf[ncs1_off++]; }
+static u16  ncs1_get16(void) { u8 a = ncs1_get8(); return (u16)(a | ((u16)ncs1_get8() << 8)); }
+static u32  ncs1_get32(void) { u16 a = ncs1_get16(); return (u32)a | ((u32)ncs1_get16() << 16); }
+static u64  ncs1_get64(void) { u32 a = ncs1_get32(); return (u64)a | ((u64)ncs1_get32() << 32); }
+
+EXP("c8w_st")         u32  c8w_st(void)     { return (u32)g_c8.st; }
+EXP("c8w_dt")         u32  c8w_dt(void)     { return (u32)g_c8.dt; }
+
+EXP("c8w_snap_size")  u32  c8w_snap_size(void)
+{
+    size_t px = (size_t)g_c8.fb.w * (size_t)g_c8.fb.h;
+    return (u32)(NCS1_SIZE + px);
+}
+
+EXP("c8w_snap")       u32  c8w_snap(u32 ptr)
+{
+    ncs1_buf = (u8 *)(uintptr_t)ptr;
+    ncs1_off = 0;
+    ncs1_put32(NCS1_MAGIC);
+    ncs1_put32((u32)g_c8.sys);
+    ncs1_put32((u32)g_c8.screen_w);
+    ncs1_put32((u32)g_c8.screen_h);
+    ncs1_put8((u8)g_c8.q.vf_reset_alu);
+    ncs1_put8((u8)g_c8.q.shift_vx);
+    ncs1_put8((u8)g_c8.q.loadstore_incr);
+    ncs1_put8((u8)g_c8.q.clip_sprites);
+    ncs1_put8((u8)g_c8.q.i_overflow_vf);
+    ncs1_put8((u8)g_c8.q.jump_bxnn);
+    ncs1_put8((u8)g_c8.q.dxy1_schip);
+    ncs1_put8((u8)g_c8.extended);
+    ncs1_put8((u8)g_c8.exited);
+    ncs1_put32((u32)g_c8.wait_key);
+    for (int k = 0; k < 16; k++) ncs1_put8(g_c8.v[k]);
+    ncs1_put8(g_c8.dt);
+    ncs1_put8(g_c8.st);
+    for (int k = 0; k < 16; k++) ncs1_put8(g_c8.keys[k]);
+    for (int k = 0; k < 8; k++)  ncs1_put8(g_c8.rpl[k]);
+    ncs1_put16(g_c8.i);
+    ncs1_put16(g_c8.pc);
+    ncs1_put16(g_c8.sp);
+    for (int k = 0; k < 16; k++) ncs1_put16(g_c8.stack[k]);
+    ncs1_put32(g_c8.rng);
+    ncs1_put64(g_c8.opcount);
+    for (int k = 0; k < 0x1000; k++) ncs1_put8(g_c8.mem[k]);
+    ncs1_put32((u32)g_c8.fb.w);
+    ncs1_put32((u32)g_c8.fb.h);
+    {
+        size_t n = (size_t)g_c8.fb.w * (size_t)g_c8.fb.h;
+        for (size_t k = 0; k < n; k++) ncs1_put8(g_c8.fb.px[k]);
+    }
+    return (u32)ncs1_off;
+}
+
+EXP("c8w_restore")    u32  c8w_restore(u32 ptr)
+{
+    ncs1_buf = (u8 *)(uintptr_t)ptr;
+    ncs1_off = 0;
+    if (ncs1_get32() != NCS1_MAGIC) return 1u;
+    u32 sys = ncs1_get32();
+    u32 sw = ncs1_get32();
+    u32 sh = ncs1_get32();
+    g_c8.sys = (c8_sys)sys;
+    g_c8.q.vf_reset_alu   = ncs1_get8();
+    g_c8.q.shift_vx       = ncs1_get8();
+    g_c8.q.loadstore_incr = ncs1_get8();
+    g_c8.q.clip_sprites   = ncs1_get8();
+    g_c8.q.i_overflow_vf  = ncs1_get8();
+    g_c8.q.jump_bxnn      = ncs1_get8();
+    g_c8.q.dxy1_schip     = ncs1_get8();
+    g_c8.extended = (int)ncs1_get8();
+    g_c8.exited   = (int)ncs1_get8();
+    g_c8.wait_key = (int)ncs1_get32();
+    for (int k = 0; k < 16; k++) g_c8.v[k] = ncs1_get8();
+    g_c8.dt = ncs1_get8();
+    g_c8.st = ncs1_get8();
+    for (int k = 0; k < 16; k++) g_c8.keys[k] = ncs1_get8();
+    for (int k = 0; k < 8; k++)  g_c8.rpl[k] = ncs1_get8();
+    g_c8.i  = ncs1_get16();
+    g_c8.pc = ncs1_get16();
+    g_c8.sp = ncs1_get16();
+    for (int k = 0; k < 16; k++) g_c8.stack[k] = ncs1_get16();
+    g_c8.rng     = ncs1_get32();
+    g_c8.opcount = ncs1_get64();
+    for (int k = 0; k < 0x1000; k++) g_c8.mem[k] = ncs1_get8();
+    u32 fw = ncs1_get32();
+    u32 fh = ncs1_get32();
+    if ((int)fw != g_c8.fb.w || (int)fh != g_c8.fb.h) {
+        fb_init(&g_c8.fb, (int)fw, (int)fh);
+        g_c8.screen_w = (int)fw;
+        g_c8.screen_h = (int)fh;
+    }
+    {
+        size_t n = (size_t)fw * (size_t)fh;
+        for (size_t k = 0; k < n; k++) g_c8.fb.px[k] = ncs1_get8();
+    }
+    return 0u;
+}
+
+/* ------------------------------------------------------------------ *
  * Game Boy DMG
  * ------------------------------------------------------------------ */
 EXP("gbw_init")       u32 gbw_init(void) { gb_init(&g_gb); return 0u; }

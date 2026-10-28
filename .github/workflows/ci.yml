@@ -15,6 +15,8 @@ jobs:
         run: make all demos
       - name: Suite de evaluación NE-E001..E012
         run: bash tests/run_evals.sh
+      - name: Certificación de juegos NOVA (input real, 17 checks)
+        run: make games games-test
       - name: Resumen de evals
         if: always()
         run: |

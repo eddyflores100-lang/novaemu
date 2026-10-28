@@ -104,6 +104,76 @@ export const BLARGG_SUITE = [
 export const BLARGG_FULL = { id: "bl-full", name: "cpu_instrs (completa)", url: "./assets/roms/blargg/blargg-full.gb", maxFrames: 9000 };
 
 /* ------------------------------------------------------------------ */
+/* Biblioteca NOVA — juegos propios ensamblados con c8asm (scripts/)   */
+/* Certificados nativamente 17/17 en tests/test_games_input.c          */
+/* (arranque, input real, estabilidad 1.2-2.4k frames, determinismo).  */
+/* ------------------------------------------------------------------ */
+export const NOVA_GAMES = [
+  {
+    id: "nova-pong", name: "NOVAPONG", short: "PONG", system: "chip8",
+    url: "./assets/roms/nova_pong.ch8", ips: 130,
+    quirks: [1, 1, 0, 1, 1, 0, 0],
+    genre: "Deportes · 1P vs CPU",
+    controls: "Flechas ↑/↓ (o 2/8) mueven la pala · 5 o Espacio inicia",
+    note: "El clásico. Primero a 9 puntos. La CPU sigue la bola con velocidad limitada: gánale el rebote cruzado.",
+    playable: true,
+  },
+  {
+    id: "nova-snake", name: "NOVASNAKE", short: "SNAKE", system: "chip8",
+    url: "./assets/roms/nova_snake.ch8", ips: 200,
+    quirks: [1, 1, 0, 1, 1, 0, 0],
+    genre: "Arcade · crece y no te muerdas",
+    controls: "Flechas (o 2/8/4/6) giran · 5 o Espacio inicia",
+    note: "Rejilla 16×8, anillo de 64 segmentos. Come rombos, crece, y recuerda: la pared también muerde.",
+    playable: true,
+  },
+  {
+    id: "nova-catch", name: "NOVACATCH", short: "CATCH", system: "chip8",
+    url: "./assets/roms/nova_catch.ch8", ips: 100,
+    quirks: [1, 1, 0, 1, 1, 0, 0],
+    genre: "Arcade · reflejos",
+    controls: "Flechas ←/→ (o 4/6) mueven la cesta · 5 o Espacio inicia",
+    note: "Atrapa los bloques que caen con la cesta. 3 vidas y cada 8 atrapadas el bloque cae más rápido.",
+    playable: true,
+  },
+  {
+    id: "nova-paddle", name: "NOVAPADDLE", short: "PAD", system: "chip8",
+    url: "./assets/roms/nova_paddle.ch8", ips: 11,
+    quirks: [1, 1, 0, 1, 1, 0, 0],
+    genre: "Demo interactiva",
+    controls: "Flechas o 4/6/2/8 mueven el bloque",
+    note: "El primer jugable de la casa: mueve el bloque por la pantalla con límites exactos certificados (0/56, 0/28).",
+    playable: true,
+  },
+  {
+    id: "chip8-bounce", name: "chip8_bounce", short: "BNC", system: "chip8",
+    url: "./assets/roms/chip8_bounce.ch8", ips: 11,
+    golden: { frames: 300, hash: "28c31cf8df2ec325" },
+    genre: "Demo automática",
+    controls: "Sin controles (determinista, RNG 0x1EE7BEEF)",
+    note: "Pelota rebotando: la demo que certifica el motor (golden bit-exacto contra el binario nativo).",
+    playable: false,
+  },
+  {
+    id: "chip8-scroller", name: "chip8_scroller", short: "SCR", system: "chip8",
+    url: "./assets/roms/chip8_scroller.ch8", ips: 11,
+    genre: "Demo automática",
+    controls: "Sin controles",
+    note: "Marquesina DEADCODE con la fuente hex del sistema.",
+    playable: false,
+  },
+  {
+    id: "schip-bounce", name: "schip_bounce", short: "S64", system: "schip",
+    url: "./assets/roms/schip_bounce.ch8", ips: 11,
+    golden: { frames: 300, hash: "96b4fc937dc825b9" },
+    genre: "Demo automática · S-CHIP",
+    controls: "Sin controles",
+    note: "Pelota 16×16 en pantalla extendida 128×64: demuestra el modo S-CHIP.",
+    playable: false,
+  },
+];
+
+/* ------------------------------------------------------------------ */
 /* Cliente WASM                                                       */
 /* ------------------------------------------------------------------ */
 export class NovaEmu {

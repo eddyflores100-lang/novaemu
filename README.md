@@ -33,10 +33,14 @@ El módulo de `docs/wasm/` se reconstruye con [zig](https://ziglang.org) (no hac
 para compilar el emulador nativo):
 
 ```
-zig cc -target wasm32-wasi -mexec-model=reactor -O2 \
+zig cc -target wasm32-wasi -mexec-model=reactor -Os \
   src/wasm/wasm_api.c src/wasm/mem_ops.c src/chip8/chip8.c \
   src/gb/gb_bus.c src/gb/gb_ppu.c src/gb/gb_cpu.c \
   -I src/wasm/include -o docs/wasm/novaemu.wasm
+
+Desde v1.1 el shim exporta además c8w_st/c8w_dt (buzzer WebAudio) y
+c8w_snap/c8w_snap_size/c8w_restore (save states NCS1). Verificación:
+`node scripts/verify_wasm.mjs` (goldens bit-exacto + roundtrip).
 ```
 
 Equivalencia verificada con `scripts/test_wasm.mjs` y la suite Blargg en Bun
