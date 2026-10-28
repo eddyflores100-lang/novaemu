@@ -16,6 +16,27 @@ make demos      # genera ROMs demo jugables
 make test       # ejecuta la suite completa NE-E001..E012
 ```
 
+## NovaEmu 2.0 — consola multissistema (29-oct-2026)
+
+**Juega ya en https://eddyflores100-lang.github.io/novaemu/**
+
+- **5 juegos completos incluidos** (homebrew/freeware con licencia verificada):
+  Cave Story (Mega Drive) · Celeste Classic (GBA) · RoboRun (NES, región PAL) ·
+  Super Boss Gaiden (SNES) · GothicVania (SNES). Fuente y licencia en cada ficha.
+- **14 sistemas** vía cores RetroArch WASM (EmulatorJS, GPL-3.0): NES, SNES, GB, GBC, GBA,
+  Mega Drive, Master System, Game Gear, N64, NDS, PlayStation 1 (CHD/PBP), Atari 2600,
+  PC Engine, Virtual Boy, Arcade (FBNeo).
+- **Tu ROM nunca sale del navegador**: drag&drop → IndexedDB → player; o URL https directa.
+  Autodetección de sistema por extensión. Opciones por juego (p. ej. `fceumm_region: PAL`).
+- **Player dual**: núcleo propio CHIP-8/S-CHIP bit-exacto (`?rom=nova-pong`) o cores profesionales
+  (`?sys=nes&file=…`). Cargador resistente: `EJS_pathtodata` explícito, fallback jsDelivr, timeout.
+- **Mando DualSense/Xbox** (Gamepad API), **pantalla completa**, **save states**, **sonido**, **rewind**.
+- **Banco de pruebas: 32 checks** (24 del motor + 8 web v2: magic bytes de ROMs, CDNs, es-ES, validación).
+
+Lecciones duras de esta versión (ver `docs/dev.html`): el loader de EmulatorJS resuelve rutas con
+`new URL(currentScript.src).pathname` y pierde el host → **`EJS_pathtodata` es obligatorio**;
+el CSS propio puede pisar el atributo `[hidden]` → regla `[hidden]{display:none!important}`.
+
 ## Estructura del repo
 
 | Ruta | Qué es |
