@@ -1,0 +1,369 @@
+; NOVASNAKE — Snake para NovaEmu (CHIP-8 64x32, rejilla 16x8 de celdas 4x4)
+; Controles: 2/8/4/6 (o Flechas) giran; 5 inicia/reinicia. La serpiente crece
+; al comer. Muere contra paredes o contra sí misma. Puntos = longitud - 3.
+;
+; Registros: V0,V1=par de carga  V2=dir V3=idx cabeza V4=longitud V5=tick
+;            V6=headx V7=heady V8=foodx V9=foody  VA..VE=scratch
+; Memoria:   0x600 anillo de 64 ranuras x 2 bytes (x,y)
+
+.equ KEYUP, 2
+.equ KEYDN, 8
+.equ KEYLF, 4
+.equ KEYRT, 6
+.equ KEYGO, 5
+.equ MAXLEN, 63
+
+INIT:
+        LD      V2, 1           ; dir = derecha
+        LD      V3, 2           ; idx cabeza
+        LD      V4, 3           ; longitud
+        LD      V5, 0           ; tick
+        LD      V6, 8
+        LD      V7, 4           ; cabeza (8,4)
+        ; anillo: idx0=(6,4) idx1=(7,4) idx2=(8,4)
+        LD      V0, 6
+        LD      V1, 4
+        LD      I, 0x600
+        LD      [I], V1
+        LD      V0, 7
+        LD      I, 0x602
+        LD      [I], V1
+        LD      V0, 8
+        LD      I, 0x604
+        LD      [I], V1
+        ; comida inicial
+        RND     V0, 0x0F
+        LD      V8, V0
+        RND     V0, 7
+        LD      V9, V0
+; ---------------- portada ----------------
+ATTR:
+        CLS
+        LD      VD, 22
+        LD      VE, 6
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_N
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_K
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        LD      V8, 8
+        AND     V8, V5
+        SNE     V8, 0
+        JP      ATXT
+        JP      AWAIT
+ATXT:
+        LD      VD, 12
+        LD      VE, 20
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_U
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_L
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      V8, KEYGO
+        LD      F, V8
+        DRW     VD, VE, 5
+AWAIT:
+        LD      V0, 2
+        LD      DT, V0
+ASPIN:
+        LD      V0, DT
+        SE      V0, 0
+        JP      ASPIN
+        ADD     V5, 1
+        LD      V8, KEYGO
+        SKP     V8
+        JP      ATTR
+; ---------------- bucle ----------------
+LOOP:
+        ; entrada con filtro anti-reversa
+        LD      VE, KEYUP
+        SKP     VE
+        JP      IN_R
+        SE      V2, 2
+        LD      V2, 0
+IN_R:
+        LD      VE, KEYRT
+        SKP     VE
+        JP      IN_D
+        SE      V2, 3
+        LD      V2, 1
+IN_D:
+        LD      VE, KEYDN
+        SKP     VE
+        JP      IN_L
+        SE      V2, 0
+        LD      V2, 2
+IN_L:
+        LD      VE, KEYLF
+        SKP     VE
+        JP      TICK
+        SE      V2, 1
+        LD      V2, 3
+TICK:
+        ADD     V5, 1
+        SE      V5, 10
+        JP      DRAW
+        LD      V5, 0
+        ; delta según dir
+        SE      V2, 0
+        JP      D2
+        LD      VD, 0
+        LD      VE, 0xFF
+        JP      MOVE
+D2:     SE      V2, 1
+        JP      D3
+        LD      VD, 1
+        LD      VE, 0
+        JP      MOVE
+D3:     SE      V2, 2
+        JP      D4
+        LD      VD, 0
+        LD      VE, 1
+        JP      MOVE
+D4:     LD      VD, 0xFF
+        LD      VE, 0
+MOVE:
+        ADD     V6, VD
+        ADD     V7, VE
+        ; paredes
+        LD      VA, 15
+        SUB     VA, V6
+        SE      VF, 1
+        JP      OVER
+        LD      VA, 7
+        SUB     VA, V7
+        SE      VF, 1
+        JP      OVER
+        ; autocolisión: VB = 0..len-1 sobre (head-VB)&63
+        LD      VB, V4
+CLP:
+        LD      VC, V3
+        SUB     VC, VB
+        LD      VD, 63
+        AND     VC, VD
+        LD      VE, VC
+        ADD     VE, VE
+        LD      I, 0x600
+        ADD     I, VE
+        LD      V1, [I]
+        SE      V0, V6
+        JP      CNEXT
+        SE      V1, V7
+        JP      CNEXT
+        JP      OVER
+CNEXT:
+        SE      VB, 0
+        JP      CDEC
+        JP      ADV
+CDEC:
+        ADD     VB, 0xFF
+        JP      CLP
+ADV:
+        ADD     V3, 1
+        LD      VD, 63
+        AND     V3, VD
+        LD      VE, V3
+        ADD     VE, VE
+        LD      I, 0x600
+        ADD     I, VE
+        LD      V0, V6
+        LD      V1, V7
+        LD      [I], V1
+        ; ¿comida?
+        SE      V6, V8
+        JP      DRAW
+        SE      V7, V9
+        JP      DRAW
+        ADD     V4, 1
+        LD      V0, 4
+        LD      ST, V0
+        SE      V4, MAXLEN
+        JP      FOOD
+        JP      WIN
+FOOD:
+        RND     V0, 0x0F
+        LD      V8, V0
+        RND     V0, 7
+        LD      V9, V0
+; ---------------- dibujo ----------------
+DRAW:
+        CLS
+        ; comida (rombo 4x4)
+        LD      VA, V8
+        ADD     VA, VA
+        ADD     VA, VA
+        LD      VB, V9
+        ADD     VB, VB
+        ADD     VB, VB
+        LD      I, SPR_FOOD
+        DRW     VA, VB, 4
+        ; serpiente (VB = len-1 .. 0, incluye la cabeza)
+        LD      VB, V4
+        ADD     VB, 0xFF
+SLP:
+        LD      VC, V3
+        SUB     VC, VB
+        LD      VD, 63
+        AND     VC, VD
+        LD      VE, VC
+        ADD     VE, VE
+        LD      I, 0x600
+        ADD     I, VE
+        LD      V1, [I]
+        ADD     V0, V0
+        ADD     V0, V0
+        ADD     V1, V1
+        ADD     V1, V1
+        LD      I, SPR_SEG
+        DRW     V0, V1, 4
+        SE      VB, 0
+        JP      SDEC
+        JP      SCORE
+SDEC:
+        ADD     VB, 0xFF
+        JP      SLP
+SCORE:
+        LD      VA, V4
+        LD      VD, 3
+        SUB     VA, VD
+        LD      F, VA
+        LD      VD, 0
+        LD      VE, 0
+        DRW     VD, VE, 5
+        LD      V0, 1
+        LD      DT, V0
+SYNCP:
+        LD      V0, DT
+        SE      V0, 0
+        JP      SYNCP
+        JP      LOOP
+; ---------------- pantallas ----------------
+WIN:
+        CLS
+        LD      VD, 16
+        LD      VE, 10
+        LD      I, GL_G
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_N
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_T
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        JP      OVL
+OVER:
+        CLS
+        LD      VD, 14
+        LD      VE, 10
+        LD      I, GL_G
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_M
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        ADD     VD, 7
+        LD      I, GL_O
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_V
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_R
+        DRW     VD, VE, 5
+OVL:
+        LD      V0, 2
+        LD      DT, V0
+OSPIN:
+        LD      V0, DT
+        SE      V0, 0
+        JP      OSPIN
+        ADD     V5, 1
+        LD      V8, 8
+        AND     V8, V5
+        SNE     V8, 0
+        JP      OTXT
+        JP      OCHK
+OTXT:
+        LD      VD, 16
+        LD      VE, 22
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_U
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_L
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      V8, KEYGO
+        LD      F, V8
+        DRW     VD, VE, 5
+OCHK:
+        LD      V8, KEYGO
+        SKP     V8
+        JP      OVL
+        JP      INIT
+
+; ---------------- sprites ----------------
+SPR_SEG:                        ; bloque 4x4
+        .db 0xF0, 0xF0, 0xF0, 0xF0
+SPR_FOOD:                       ; rombo 4x4
+        .db 0x60, 0x90, 0x90, 0x60
+
+; glifos 4x5
+GL_S:   .db 0xE0, 0x80, 0xE0, 0x10, 0xE0
+GL_N:   .db 0x90, 0xB0, 0xD0, 0x90, 0x90
+GL_A:   .db 0xE0, 0x90, 0xE0, 0x90, 0x90
+GL_K:   .db 0x90, 0xA0, 0xC0, 0xA0, 0x90
+GL_E:   .db 0xE0, 0x80, 0xE0, 0x80, 0xE0
+GL_G:   .db 0xE0, 0x80, 0xB0, 0x90, 0xE0
+GL_M:   .db 0x90, 0xF0, 0x90, 0x90, 0x90
+GL_O:   .db 0xE0, 0x90, 0x90, 0x90, 0xE0
+GL_V:   .db 0x90, 0x90, 0x90, 0x90, 0x60
+GL_R:   .db 0xE0, 0x90, 0xE0, 0xB0, 0x90
+GL_P:   .db 0xE0, 0x90, 0xE0, 0x80, 0x80
+GL_U:   .db 0x90, 0x90, 0x90, 0x90, 0xE0
+GL_L:   .db 0x80, 0x80, 0x80, 0x80, 0xE0
+GL_T:   .db 0xE0, 0x40, 0x40, 0x40, 0x40

@@ -1,0 +1,263 @@
+; NOVACATCH — atrapa los bloques que caen (CHIP-8 64x32)
+; Controles: 4/6 (o Flechas izq/der) mueven la cesta; 5 inicia/reinicia.
+; 3 vidas. Cada 8 atrapadas el bloque cae más rápido.
+;
+; Registros: V1=cesta x (0..56)  V2=bloque x  V3=bloque y  V4=tick
+;            V5=cadencia (pasos por caída)  VD,VE,VA,VC=scratch
+; Memoria:   0x501=puntos  0x502=vidas
+
+.equ KEYLF, 4
+.equ KEYRT, 6
+.equ KEYGO, 5
+
+INIT:
+        LD      V1, 28
+        LD      V5, 8
+        LD      V4, 0
+        LD      I, 0x501
+        LD      V0, 0
+        LD      [I], V0
+        LD      I, 0x502
+        LD      V0, 3
+        LD      [I], V0
+        RND     V0, 0x3E
+        LD      V2, V0
+        LD      V3, 0
+; ---------------- portada ----------------
+ATTR:
+        CLS
+        LD      VD, 20
+        LD      VE, 6
+        LD      I, GL_C
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_T
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_C
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_H
+        DRW     VD, VE, 5
+        LD      V8, 8
+        AND     V8, V4
+        SNE     V8, 0
+        JP      ATXT
+        JP      AWAIT
+ATXT:
+        LD      VD, 12
+        LD      VE, 20
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_U
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_L
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      V8, KEYGO
+        LD      F, V8
+        DRW     VD, VE, 5
+AWAIT:
+        LD      V0, 2
+        LD      DT, V0
+ASPIN:
+        LD      V0, DT
+        SE      V0, 0
+        JP      ASPIN
+        ADD     V4, 1
+        LD      V8, KEYGO
+        SKP     V8
+        JP      ATTR
+; ---------------- bucle ----------------
+LOOP:
+        LD      VE, KEYLF
+        SKP     VE
+        JP      IN_R
+        SE      V1, 0
+        ADD     V1, 0xFF
+IN_R:
+        LD      VE, KEYRT
+        SKP     VE
+        JP      TICK
+        SE      V1, 56
+        ADD     V1, 1
+TICK:
+        ADD     V4, 1
+        SE      V4, V5
+        JP      DRAW
+        LD      V4, 0
+        ADD     V3, 1
+        SE      V3, 29
+        JP      DRAW
+        ; ¿atrapado? cesta V1..V1+7, bloque V2..V2+1
+        LD      VA, V1
+        ADD     VA, 7
+        SUB     VA, V2          ; VF = (V1+7 >= V2)
+        SE      VF, 1
+        JP      MISS
+        LD      VA, V2
+        ADD     VA, 1
+        SUB     VA, V1          ; VF = (V2+1 >= V1)
+        SE      VF, 1
+        JP      MISS
+        ; puntos + pitido
+        LD      I, 0x501
+        LD      V0, [I]
+        ADD     V0, 1
+        LD      I, 0x501
+        LD      [I], V0
+        LD      V0, 3
+        LD      ST, V0
+        LD      I, 0x501
+        LD      V0, [I]
+        ; cada 8 puntos acelera
+        LD      VA, V0
+        LD      VC, 7
+        AND     VA, VC
+        SNE     VA, 0
+        JP      SPEEDUP
+        JP      RESPAWN
+SPEEDUP:
+        SE      V5, 2
+        ADD     V5, 0xFF
+        JP      RESPAWN
+MISS:
+        LD      I, 0x502
+        LD      V0, [I]
+        ADD     V0, 0xFF
+        LD      I, 0x502
+        LD      [I], V0
+        SE      V0, 0
+        JP      RESPAWN
+        JP      OVER
+RESPAWN:
+        LD      V3, 0
+        RND     V0, 0x3E
+        LD      V2, V0
+; ---------------- dibujo ----------------
+DRAW:
+        CLS
+        LD      I, 0x501
+        LD      V0, [I]
+        LD      F, V0
+        LD      VD, 2
+        LD      VE, 0
+        DRW     VD, VE, 5
+        LD      I, 0x502
+        LD      V0, [I]
+        LD      F, V0
+        LD      VD, 12
+        DRW     VD, VE, 5
+        LD      I, SPR_BLK
+        DRW     V2, V3, 2
+        LD      I, SPR_BSK
+        LD      VD, V1
+        LD      VE, 30
+        DRW     VD, VE, 2
+        LD      V0, 1
+        LD      DT, V0
+SYNCP:
+        LD      V0, DT
+        SE      V0, 0
+        JP      SYNCP
+        JP      LOOP
+; ---------------- game over ----------------
+OVER:
+        CLS
+        LD      VD, 14
+        LD      VE, 8
+        LD      I, GL_G
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_M
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        ADD     VD, 7
+        LD      I, GL_O
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_V
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_R
+        DRW     VD, VE, 5
+OVL:
+        LD      V0, 2
+        LD      DT, V0
+OSPIN:
+        LD      V0, DT
+        SE      V0, 0
+        JP      OSPIN
+        ADD     V4, 1
+        LD      V8, 8
+        AND     V8, V4
+        SNE     V8, 0
+        JP      OTXT
+        JP      OCHK
+OTXT:
+        LD      VD, 16
+        LD      VE, 20
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_U
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_L
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      V8, KEYGO
+        LD      F, V8
+        DRW     VD, VE, 5
+OCHK:
+        LD      V8, KEYGO
+        SKP     V8
+        JP      OVL
+        JP      INIT
+
+; ---------------- sprites ----------------
+SPR_BLK:                        ; bloque 2x2
+        .db 0xC0, 0xC0
+SPR_BSK:                        ; cesta 8x2
+        .db 0xFF, 0xFF
+
+; glifos 4x5
+GL_C:   .db 0xE0, 0x80, 0x80, 0x80, 0xE0
+GL_A:   .db 0xE0, 0x90, 0xE0, 0x90, 0x90
+GL_T:   .db 0xE0, 0x40, 0x40, 0x40, 0x40
+GL_H:   .db 0x90, 0x90, 0xE0, 0x90, 0x90
+GL_G:   .db 0xE0, 0x80, 0xB0, 0x90, 0xE0
+GL_M:   .db 0x90, 0xF0, 0x90, 0x90, 0x90
+GL_E:   .db 0xE0, 0x80, 0xE0, 0x80, 0xE0
+GL_O:   .db 0xE0, 0x90, 0x90, 0x90, 0xE0
+GL_V:   .db 0x90, 0x90, 0x90, 0x90, 0x60
+GL_R:   .db 0xE0, 0x90, 0xE0, 0xB0, 0x90
+GL_P:   .db 0xE0, 0x90, 0xE0, 0x80, 0x80
+GL_U:   .db 0x90, 0x90, 0x90, 0x90, 0xE0
+GL_L:   .db 0x80, 0x80, 0x80, 0x80, 0xE0
+GL_S:   .db 0xE0, 0x80, 0xE0, 0x10, 0xE0

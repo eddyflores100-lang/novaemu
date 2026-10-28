@@ -1,0 +1,373 @@
+; NOVAPONG — Pong vs CPU para NovaEmu (CHIP-8 64x32)
+; Controles: 2/8 (o Flechas arriba/abajo) mueven la pala; el punto 5 inicia.
+; Primero a 9 puntos. Física: reflexión entera (dy=-dy), IA por signo (VF).
+;
+; Registros: V1=P1y V2=CPUy V3=ballx V4=bally V5=dx V6=dy
+;            V7=contador V8,V9,VD,VE=scratch
+; Memoria:   0x500=puntos P1  0x501=puntos CPU
+
+.equ KEYUP, 2
+.equ KEYDN, 8
+.equ KEYGO, 5
+.equ PADH, 5
+.equ BOT, 27
+.equ WIN, 9
+
+; ---------------- init ----------------
+INIT:
+        LD      V1, 13          ; pala P1
+        LD      V2, 13          ; pala CPU
+        LD      V7, 0           ; contador de pasadas
+        LD      I, 0x500
+        LD      V0, 0
+        LD      [I], V0         ; 0x500 = 0
+        LD      I, 0x501
+        LD      [I], V0         ; 0x501 = 0
+; ---------------- portada ----------------
+ATTR:
+        CLS
+        ; logo PONG (4 glifos 4x5)
+        LD      VD, 24
+        LD      VE, 6
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      I, GL_O
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      I, GL_N
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      I, GL_G
+        DRW     VD, VE, 5
+        ; parpadeo "PULSA 5" con bit 3 del contador
+        LD      V8, 8
+        AND     V8, V7
+        SNE     V8, 0
+        JP      ATTR_TXT
+        JP      ATTR_WAIT
+ATTR_TXT:
+        LD      VD, 12
+        LD      VE, 20
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_U
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_L
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      V8, KEYGO
+        LD      F, V8           ; dígito 5 de la fuente ROM
+        DRW     VD, VE, 5
+ATTR_WAIT:
+        ; pausa de 2 ticks de delay + contador
+        LD      V0, 2
+        LD      DT, V0
+ATTR_SPIN:
+        LD      V0, DT
+        SE      V0, 0
+        JP      ATTR_SPIN
+        ADD     V7, 1
+        ; ¿tecla 5?
+        LD      V8, KEYGO
+        SKP     V8
+        JP      ATTR
+        ; saque: bola al centro, dirección aleatoria
+        LD      V3, 31
+        LD      V4, 15
+        RND     V0, 1
+        SNE     V0, 1
+        LD      V5, 0xFF
+        SE      V0, 1
+        LD      V5, 1
+        RND     V0, 1
+        SNE     V0, 1
+        LD      V6, 0xFF
+        SE      V0, 1
+        LD      V6, 1
+; ---------------- bucle principal ----------------
+LOOP:
+        ADD     V7, 1
+        ; ---- entrada P1 ----
+        LD      V8, KEYUP
+        SKP     V8
+        JP      IN_DN
+        SE      V1, 0
+        ADD     V1, 0xFF
+IN_DN:
+        LD      V8, KEYDN
+        SKP     V8
+        JP      AI
+        SE      V1, BOT
+        ADD     V1, 1
+; ---- IA CPU (una pasada de cada dos) ----
+AI:
+        LD      V8, V7
+        LD      V9, 1
+        AND     V8, V9
+        SNE     V8, 0
+        JP      AI_GO
+        JP      BALL
+AI_GO:
+        SNE     V5, 1
+        JP      AI_TRACK
+        JP      AI_CENT
+AI_TRACK:
+        LD      VE, V2
+        ADD     VE, 2           ; centro de la pala CPU
+        SE      VE, V4
+        JP      AI_CMP
+        JP      BALL            ; centrada con la bola: no mover
+AI_CMP:
+        SUB     VE, V4          ; VF = (centro >= bola)
+        SE      VF, 1
+        JP      AI_DN
+        SE      V2, 0
+        ADD     V2, 0xFF
+        JP      BALL
+AI_DN:
+        SE      V2, BOT
+        ADD     V2, 1
+        JP      BALL
+AI_CENT:
+        SE      V2, 13
+        JP      AI_C2
+        JP      BALL
+AI_C2:
+        LD      VE, V2
+        LD      V9, 13
+        SUB     VE, V9
+        SE      VF, 1
+        JP      AI_CD
+        SE      V2, 0
+        ADD     V2, 0xFF
+        JP      BALL
+AI_CD:
+        SE      V2, BOT
+        ADD     V2, 1
+; ---- bola: eje Y ----
+BALL:
+        SNE     V6, 1
+        JP      BDOWN
+BUP:
+        SNE     V4, 0
+        LD      V6, 1
+        SNE     V4, 0
+        ADD     V4, 0xFF
+        JP      BX
+BDOWN:
+        SNE     V4, 30
+        LD      V6, 0xFF
+        SNE     V4, 30
+        ADD     V4, 1
+; ---- bola: eje X (con colisiones de pala) ----
+BX:
+        SNE     V5, 0xFF
+        JP      BLFT
+        ; dx=+1: lado CPU
+        SNE     V3, 57
+        JP      BCHK
+        JP      BMOVE
+BCHK:
+        LD      VE, V4
+        ADD     VE, 1
+        SUB     VE, V2          ; VF = (bola+1 >= pala)
+        SE      VF, 1
+        JP      BMOVE
+        LD      VE, V2
+        ADD     VE, PADH
+        SUB     VE, V4          ; VF = (pala+alto >= bola)
+        SE      VF, 1
+        JP      BMOVE
+        LD      V5, 0xFF        ; rebote
+        LD      V0, 2
+        LD      ST, V0
+        JP      BMOVE
+BLFT:
+        ; dx=-1: lado P1
+        SNE     V3, 5
+        JP      PCHK
+        JP      BMOVE
+PCHK:
+        LD      VE, V4
+        ADD     VE, 1
+        SUB     VE, V1
+        SE      VF, 1
+        JP      BMOVE
+        LD      VE, V1
+        ADD     VE, PADH
+        SUB     VE, V4
+        SE      VF, 1
+        JP      BMOVE
+        LD      V5, 1
+        LD      V0, 2
+        LD      ST, V0
+BMOVE:
+        ADD     V3, V5
+        SNE     V3, 1
+        JP      SC_CPU
+        SNE     V3, 62
+        JP      SC_P1
+; ---- dibujo ----
+DRAW:
+        CLS
+        LD      I, 0x500
+        LD      V0, [I]         ; puntos P1
+        LD      F, V0
+        LD      VD, 28
+        LD      VE, 1
+        DRW     VD, VE, 5
+        LD      I, 0x501
+        LD      V0, [I]         ; puntos CPU
+        LD      F, V0
+        LD      VD, 35
+        DRW     VD, VE, 5
+        LD      I, SPR_PAD
+        LD      VD, 4
+        LD      VE, V1
+        DRW     VD, VE, PADH
+        LD      VD, 59
+        LD      VE, V2
+        DRW     VD, VE, PADH
+        LD      I, SPR_BALL
+        DRW     V3, V4, 2
+        LD      V0, 1
+        LD      DT, V0
+SYNCP:
+        LD      V0, DT
+        SE      V0, 0
+        JP      SYNCP
+        JP      LOOP
+; ---- puntos ----
+SC_CPU:
+        LD      V0, 6
+        LD      ST, V0
+        LD      I, 0x501
+        LD      V0, [I]
+        ADD     V0, 1
+        LD      I, 0x501
+        LD      [I], V0
+        SE      V0, WIN
+        JP      RESUME
+        JP      OVER
+SC_P1:
+        LD      V0, 6
+        LD      ST, V0
+        LD      I, 0x500
+        LD      V0, [I]
+        ADD     V0, 1
+        LD      I, 0x500
+        LD      [I], V0
+        SE      V0, WIN
+        JP      RESUME
+        JP      OVER
+RESUME:
+        LD      V3, 31
+        LD      V4, 15
+        RND     V0, 1
+        SNE     V0, 1
+        LD      V5, 0xFF
+        SE      V0, 1
+        LD      V5, 1
+        RND     V0, 1
+        SNE     V0, 1
+        LD      V6, 0xFF
+        SE      V0, 1
+        LD      V6, 1
+        JP      DRAW
+; ---- fin de partida ----
+OVER:
+        ; reset puntos ya al volver; dibuja GAME OVER
+        CLS
+        LD      VD, 14
+        LD      VE, 8
+        LD      I, GL_G
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_M
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        ADD     VD, 7
+        LD      I, GL_O
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_V
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_E
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_R
+        DRW     VD, VE, 5
+OVLOOP:
+        LD      V0, 2
+        LD      DT, V0
+OVSPIN:
+        LD      V0, DT
+        SE      V0, 0
+        JP      OVSPIN
+        ADD     V7, 1
+        LD      V8, 8
+        AND     V8, V7
+        SNE     V8, 0
+        JP      OV_TXT
+        JP      OV_CHK
+OV_TXT:
+        LD      VD, 16
+        LD      VE, 20
+        LD      I, GL_P
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_U
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_L
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_S
+        DRW     VD, VE, 5
+        ADD     VD, 5
+        LD      I, GL_A
+        DRW     VD, VE, 5
+        ADD     VD, 6
+        LD      V8, KEYGO
+        LD      F, V8
+        DRW     VD, VE, 5
+OV_CHK:
+        LD      V8, KEYGO
+        SKP     V8
+        JP      OVLOOP
+        JP      INIT
+
+; ---------------- sprites ----------------
+SPR_PAD:                        ; pala 1x5
+        .db 0x80, 0x80, 0x80, 0x80, 0x80
+SPR_BALL:                       ; bola 2x2
+        .db 0xC0, 0xC0
+
+; glifos 4x5 (nibble alto = fila)
+GL_P:   .db 0xE0, 0x90, 0xE0, 0x80, 0x80
+GL_O:   .db 0xE0, 0x90, 0x90, 0x90, 0xE0
+GL_N:   .db 0x90, 0xB0, 0xD0, 0x90, 0x90
+GL_G:   .db 0xE0, 0x80, 0xB0, 0x90, 0xE0
+GL_U:   .db 0x90, 0x90, 0x90, 0x90, 0xE0
+GL_L:   .db 0x80, 0x80, 0x80, 0x80, 0xE0
+GL_S:   .db 0xE0, 0x80, 0xE0, 0x10, 0xE0
+GL_A:   .db 0xE0, 0x90, 0xE0, 0x90, 0x90
+GL_M:   .db 0x90, 0xF0, 0x90, 0x90, 0x90
+GL_E:   .db 0xE0, 0x80, 0xE0, 0x80, 0xE0
+GL_V:   .db 0x90, 0x90, 0x90, 0x90, 0x60
+GL_R:   .db 0xE0, 0x90, 0xE0, 0xB0, 0x90

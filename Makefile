@@ -40,10 +40,11 @@ test: all demos
 	bash tests/run_evals.sh
 
 # Juegos NOVA: ensamblar (requiere python3) + certificar input nativo
+# Las fuentes viven en games/ y el ensamblador en tools/ (todo dentro del repo)
 games:
-	python3 ../scripts/c8asm.py ../scripts/games/nova_pong.s8 -o tests/roms/gen/nova_pong.ch8
-	python3 ../scripts/c8asm.py ../scripts/games/nova_snake.s8 -o tests/roms/gen/nova_snake.ch8
-	python3 ../scripts/c8asm.py ../scripts/games/nova_catch.s8 -o tests/roms/gen/nova_catch.ch8
+	python3 tools/c8asm.py games/nova_pong.s8 -o tests/roms/gen/nova_pong.ch8
+	python3 tools/c8asm.py games/nova_snake.s8 -o tests/roms/gen/nova_snake.ch8
+	python3 tools/c8asm.py games/nova_catch.s8 -o tests/roms/gen/nova_catch.ch8
 	cp tests/roms/gen/nova_pong.ch8 tests/roms/gen/nova_snake.ch8 tests/roms/gen/nova_catch.ch8 docs/assets/roms/
 
 games-test: build/games-test
