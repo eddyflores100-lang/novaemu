@@ -105,5 +105,44 @@ int main(int argc, char **argv)
     snprintf(path, sizeof path, "%s/chip8_scroller.ch8", dir);
     write_rom(path, rom3, (int)sizeof rom3);
 
+    /* 4) nova_paddle.ch8: JUEGO JUGABLE — mueve el bloque con las teclas
+     * 4/6 (izq/der) y 2/8 (arriba/abajo) del teclado hex CHIP-8.
+     * Mismo mapeo que las flechas del sitio: ←→↑↓ = 4/6/2/8. */
+    static const u8 paddle[0x36] = {
+        0x64,0x1C,             /* 200: V4 = 28 (x)          */
+        0x65,0x0E,             /* 202: V5 = 14 (y)          */
+        0xA2,0x40,             /* 204: I  = sprite (0x240)  */
+        0x00,0xE0,             /* 206: cls        <- bucle  */
+        0xD4,0x54,             /* 208: draw(V4,V5) x4       */
+        0x60,0x04,             /* 20A: V0 = 4               */
+        0xE0,0x9E,             /* 20C: skip si tecla 4 (EX9E)*/
+        0x12,0x14,             /* 20E: jp 214 (tecla 6)     */
+        0x34,0x00,             /* 210: skip si V4==0        */
+        0x74,0xFF,             /* 212: V4--                 */
+        0x60,0x06,             /* 214: V0 = 6               */
+        0xE0,0x9E,             /* 216: skip si tecla 6 (EX9E)*/
+        0x12,0x1E,             /* 218: jp 21E (tecla 2)     */
+        0x34,0x38,             /* 21A: skip si V4==56       */
+        0x74,0x01,             /* 21C: V4++                 */
+        0x60,0x02,             /* 21E: V0 = 2               */
+        0xE0,0x9E,             /* 220: skip si tecla 2 (EX9E)*/
+        0x12,0x28,             /* 222: jp 228 (tecla 8)     */
+        0x35,0x00,             /* 224: skip si V5==0        */
+        0x75,0xFF,             /* 226: V5--                 */
+        0x60,0x08,             /* 228: V0 = 8               */
+        0xE0,0x9E,             /* 22A: skip si tecla 8 (EX9E)*/
+        0x12,0x32,             /* 22C: jp 232 (fin)         */
+        0x35,0x1C,             /* 22E: skip si V5==28       */
+        0x75,0x01,             /* 230: V5++                 */
+        0x12,0x06              /* 232: jp 206 (bucle)       */
+    };
+    static const u8 block4[4] = { 0xF0,0xF0,0xF0,0xF0 };
+    u8 rom4[0x200];
+    memset(rom4, 0, sizeof rom4);
+    memcpy(rom4, paddle, sizeof paddle);
+    memcpy(rom4 + 0x040, block4, sizeof block4);
+    snprintf(path, sizeof path, "%s/nova_paddle.ch8", dir);
+    write_rom(path, rom4, (int)sizeof rom4);
+
     return 0;
 }

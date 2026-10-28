@@ -3,6 +3,17 @@
  */
 import { NovaEmu, PALETTES, paletteU32, C8_KEYS, GB_KEYS, ROM_CATALOG } from "./nova-core.js";
 
+/* Traduce e.key → código estilo KeyboardEvent.code (fallback para eventos
+ * que llegan sin e.code: teclados remotos, automatización, etc.) */
+const codeFromKey = (k) => {
+  if (!k) return "";
+  if (k === " ") return "Space";
+  if (/^Arrow/.test(k)) return k;
+  if (/^[a-z]$/i.test(k)) return "Key" + k.toUpperCase();
+  if (/^[0-9]$/.test(k)) return "Digit" + k;
+  return k;
+};
+
 /* ---------------------------- Renderer ---------------------------- */
 export class ScreenRenderer {
   constructor(canvas) {
@@ -151,23 +162,144 @@ export class ConsoleUI {
 
     this.bindKeyboard();
     this.bindTouch();
+    this.bindFullscreen();
+    this._padPrev = {};
+    this._padShown = false;
+  }
+
+  /* ------------------- pantalla completa --------------------------- */
+  bindFullscreen() {
+    const btn = this.root.querySelector("[data-fullscreen]");
+    if (btn) btn.addEventListener("click", () => this.toggleFullscreen());
+    const onChange = () => this.fitFullscreen();
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+  }
+
+  toggleFullscreen() {
+    const target = this.el.drop || this.root.querySelector(".screen-frame") || this.root;
+    const doc = document;
+    const active = doc.fullscreenElement || doc.webkitFullscreenElement;
+    if (!active) {
+      const req = target.requestFullscreen || target.webkitRequestFullscreen;
+      if (req) req.call(target);
+      else this.toast("✗ Tu navegador no soporta pantalla completa", "err", 6000);
+    } else {
+      const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+      if (exit) exit.call(doc);
+    }
+  }
+
+  fitFullscreen() {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    const cv = this.renderer.cv;
+    if (!fsEl) { cv.style.width = ""; cv.style.height = ""; return; }
+    const w = this.emu ? this.emu.fbW() : 64, h = this.emu ? this.emu.fbH() : 32;
+    const s = Math.min(window.innerWidth / w, window.innerHeight / h);
+    cv.style.width = Math.floor(w * s) + "px";
+    cv.style.height = Math.floor(h * s) + "px";
   }
 
   /* ------------------------- entrada ------------------------------ */
   bindKeyboard() {
+    // map: e.code → lista de destinos { k, sys, label } (una tecla puede
+    // enviar varios valores: p. ej. flechas del CHIP-8).
     const map = {};
-    C8_KEYS.forEach((x) => (map[x.code] = { k: x.k, sys: "c8", label: x.label }));
-    GB_KEYS.forEach((x) => (map[x.code] = { k: x.k, sys: "gb", label: x.label }));
+    const add = (code, entry) => { (map[code] ??= []).push(entry); };
+    C8_KEYS.forEach((x) => add(x.code, { k: x.k, sys: "c8", label: x.label }));
+    // Extensiones: flechas → 2/8/4/6 (arriba/abajo/izq/der) y Espacio → 5
+    // (acción). No colisiona con el mapa clásico 1234/QWER/ASDF/ZXCV.
+    add("ArrowUp",    { k: 0x2, sys: "c8", label: "2" });
+    add("ArrowDown",  { k: 0x8, sys: "c8", label: "8" });
+    add("ArrowLeft",  { k: 0x4, sys: "c8", label: "4" });
+    add("ArrowRight", { k: 0x6, sys: "c8", label: "6" });
+    add("Space",      { k: 0x5, sys: "c8", label: "5" });
+    // WASD como direcciones (adicional al mapa clásico: W sigue siendo la
+    // tecla 5 del pad, pero también mueve arriba; A izquierda; D derecha).
+    add("KeyW", { k: 0x2, sys: "c8", label: "2" });
+    add("KeyA", { k: 0x4, sys: "c8", label: "4" });
+    add("KeyD", { k: 0x6, sys: "c8", label: "6" });
+    GB_KEYS.forEach((x) => add(x.code, { k: x.k, sys: "gb", label: x.label }));
+    add("Space", { k: 0, sys: "gb", label: "A" }); // Espacio = A en Game Boy
     const handle = (down) => (e) => {
       if (!this.emu) return;
-      const m = map[e.code];
-      if (!m) return;
-      if (m.sys === "gb" && this.emu.sys === "gb") { this.emu.key(m.k, down); e.preventDefault(); }
-      else if (m.sys === "c8" && this.emu.sys !== "gb") { this.emu.key(m.k, down); e.preventDefault(); }
-      this.flashKey(m.label, down, m.sys);
+      // no robar teclas a campos de texto (búsquedas, etc.)
+      if (e.target?.closest?.("input, select, textarea")) return;
+      // tras pulsar un botón (catálogo, play…) el foco queda en él y las
+      // flechas/espacio dejarían de mover: devolvemos el teclado al juego.
+      const btn = e.target?.closest?.("button, a");
+      if (btn && down) btn.blur();
+      // fallback: si el evento viene sin e.code (teclados remotos/raros),
+      // lo reconstruimos desde e.key
+      const list = map[e.code || codeFromKey(e.key)];
+      if (!list) return;
+      let used = false;
+      for (const m of list) {
+        if (m.sys === "gb" && this.emu.sys === "gb") { this.emu.key(m.k, down); used = true; }
+        else if (m.sys === "c8" && this.emu.sys !== "gb") { this.emu.key(m.k, down); used = true; }
+        this.flashKey(m.label, down, m.sys);
+      }
+      if (used) e.preventDefault();
     };
     window.addEventListener("keydown", handle(true));
     window.addEventListener("keyup", handle(false));
+  }
+
+  /* Gamepad USB/Bluetooth vía Gamepad API (mapeo estándar). Se sondea
+   * cada frame y solo se envían transiciones (borde) al núcleo. */
+  pollGamepad() {
+    if (!navigator.getGamepads || !this.emu) return;
+    const pad = Array.from(navigator.getGamepads()).find(Boolean);
+    const prev = this._padPrev || {};
+    const next = {};
+    if (pad) {
+      const b = (i) => !!(pad.buttons[i]?.pressed);
+      const ax = pad.axes || [];
+      const dp = {
+        up:    b(12) || ax[1] < -0.5,
+        down:  b(13) || ax[1] >  0.5,
+        left:  b(14) || ax[0] < -0.5,
+        right: b(15) || ax[0] >  0.5,
+      };
+      if (this.emu.sys === "gb") {
+        next["gb:0"] = b(0); next["gb:1"] = b(1);
+        next["gb:2"] = b(8); next["gb:3"] = b(9);
+        next["gb:6"] = dp.up; next["gb:7"] = dp.down;
+        next["gb:5"] = dp.left; next["gb:4"] = dp.right;
+      } else {
+        next["c8:2"] = dp.up; next["c8:8"] = dp.down;
+        next["c8:4"] = dp.left; next["c8:6"] = dp.right || b(1);
+        next["c8:5"] = b(0); next["c8:c"] = b(2); next["c8:d"] = b(3);
+      }
+      if (!this._padShown && pad.id) {
+        this._padShown = true;
+        this.toast("🎮 Gamepad detectado: " + String(pad.id).slice(0, 44), "ok", 3500);
+      }
+    }
+    const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+    for (const key of keys) {
+      const now = !!next[key], was = !!prev[key];
+      if (now === was) continue;
+      const [sys, kk] = key.split(":");
+      const gbActive = this.emu.sys === "gb";
+      if ((sys === "gb") === gbActive) this.emu.key(+kk, now);
+    }
+    this._padPrev = next;
+  }
+
+  /* Aviso flotante sobre la pantalla (éxito verde / error rojo). */
+  toast(msg, kind = "ok", ms = 5000) {
+    let t = this.root.querySelector("[data-toast]");
+    if (!t) {
+      t = document.createElement("div");
+      t.setAttribute("data-toast", "");
+      (this.el.drop || this.root).appendChild(t);
+    }
+    t.className = "toast " + kind;
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(this._toastT);
+    if (ms > 0) this._toastT = setTimeout(() => { t.style.display = "none"; }, ms);
   }
 
   bindTouch() {
@@ -211,10 +343,33 @@ export class ConsoleUI {
   }
 
   async loadFile(f) {
+    const n = f.name.toLowerCase();
+    if (/\.(zip|7z|rar|tar|gz)$/.test(n)) {
+      this.toast(`✗ ${f.name} está comprimido — descomprímelo y arrastra el .ch8 o .gb de dentro`, "err", 9000);
+      return;
+    }
+    if (!n.endsWith(".ch8") && !n.endsWith(".gb") && !n.endsWith(".gbc")) {
+      this.toast(`✗ ${f.name} no es un juego compatible. Solo .ch8 (CHIP-8) y .gb/.gbc (Game Boy). PS5/Xbox no existen como emulador en ningún sitio del mundo`, "err", 11000);
+      return;
+    }
     const buf = new Uint8Array(await f.arrayBuffer());
     let sys = this.detectSystem(f.name);
-    if (!sys) {
-      sys = (this.root.querySelector("[data-sys-select]")?.value) || "chip8";
+    if (!sys) sys = this.root.querySelector("[data-sys-select]")?.value || "chip8";
+    if (sys !== "gb") {
+      if (buf.length > 3584) {
+        this.toast(`✗ ${f.name} (${buf.length} B) no cabe en CHIP-8 (máx 3.584 B). Si es de Game Boy, renómbralo a .gb`, "err", 9000);
+        return;
+      }
+      if (buf.length < 4) { this.toast(`✗ ${f.name} está vacío o corrupto`, "err", 8000); return; }
+    } else {
+      // cabecera GB: primeros 8 bytes del logo Nintendo en 0x104 (los ROMs
+      // del banco van recortados, así que solo exigimos la firma inicial)
+      const LOGO = [0xCE,0xED,0x66,0x66,0xCC,0x0D,0x00,0x0B];
+      const okHeader = buf.length > 0x114 && LOGO.every((b, i) => buf[0x104 + i] === b);
+      if (!okHeader) {
+        this.toast(`✗ ${f.name} no tiene cabecera de Game Boy. ¿Será un .ch8?`, "err", 9000);
+        return;
+      }
     }
     await this.loadRom(buf, f.name, sys);
   }
@@ -248,7 +403,9 @@ export class ConsoleUI {
     if (this.el.quirks) this.el.quirks.style.display = sys === "gb" ? "none" : "";
     if (this.el.ipsWrap) this.el.ipsWrap.style.display = sys === "gb" ? "none" : "";
     this.showSystem(sys);
-    this.setStatus(`ROM cargada: ${name} (${bytes.length} bytes, ${sys.toUpperCase()})`);
+    const sysName = sys === "gb" ? "GAME BOY" : sys === "schip" ? "S-CHIP" : "CHIP-8";
+    this.setStatus(`ROM cargada: ${name} (${bytes.length} bytes, ${sysName})`);
+    this.toast(`✓ ${name} — ${sysName} · juega con Flechas / WASD / Espacio (o gamepad)`, "ok", 5000);
     this.play();
   }
 
@@ -303,6 +460,7 @@ export class ConsoleUI {
       this._raf = requestAnimationFrame(loop);
       const dt = t - this._lastT;
       this._lastT = t;
+      if (this.emu) this.pollGamepad();
       if (this.playing && this.emu) {
         // objetivo 60 fps con acumulador (mismo pacer que el CLI: deadline absoluto)
         this._acc += dt;

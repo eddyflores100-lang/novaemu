@@ -202,3 +202,30 @@ footer {
   .wrap { padding: 18px 14px 60px; }
   .pad.gb { grid-template-columns: 84px 1fr 84px; }
 }
+
+/* --- avisos flotantes (toast) sobre la pantalla ------------------- */
+.screen-frame { position: relative; }
+.toast {
+  display: none; position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  max-width: 92%; padding: 9px 14px; border-radius: 8px; font-size: 12.5px; line-height: 1.45;
+  font-family: var(--mono); background: rgba(9,9,11,.92); border: 1px solid var(--border);
+  color: var(--fg); box-shadow: 0 6px 24px rgba(0,0,0,.5); z-index: 20; pointer-events: none;
+}
+.toast.ok { border-color: rgba(16,185,129,.6); color: #6ee7b7; }
+.toast.err { border-color: rgba(239,68,68,.7); color: #fca5a5; }
+
+/* --- leyenda de controles ----------------------------------------- */
+.keylegend {
+  margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px;
+  font-size: 12.5px; color: var(--fg-dim); line-height: 1.6;
+}
+.keylegend b { color: var(--fg); }
+
+/* --- pantalla completa --------------------------------------------- */
+.screen-frame:fullscreen {
+  background: #000; display: flex; align-items: center; justify-content: center;
+  width: 100vw; height: 100vh; border-radius: 0; border: none;
+}
+.screen-frame:fullscreen canvas { width: auto; height: auto; }
+.screen-frame:-webkit-full-screen { background: #000; display: flex; align-items: center; justify-content: center; }
+.screen-frame:-webkit-full-screen canvas { width: auto; height: auto; }

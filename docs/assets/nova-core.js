@@ -75,14 +75,16 @@ export const GB_KEYS = [
 /* Catálogo de ROMs incluidas + goldens certificados (NE-E003/E004)   */
 /* ------------------------------------------------------------------ */
 export const ROM_CATALOG = [
+  { id: "nova-paddle",    name: "nova_paddle",    system: "chip8", url: "./assets/roms/nova_paddle.ch8",
+    note: "🎮 JUGABLE: mueve el bloque con Flechas / WASD / teclas 4-6-2-8. Gamepad USB también vale" },
   { id: "chip8-bounce",   name: "chip8_bounce",   system: "chip8", url: "./assets/roms/chip8_bounce.ch8",
     golden: { frames: 300, hash: "28c31cf8df2ec325" },
-    note: "Demo sintetizada, determinista (RNG semilla fija 0x1EE7BEEF)" },
+    note: "Demo automática (sin controles): pelota rebotando, determinista (RNG 0x1EE7BEEF)" },
   { id: "chip8-scroller", name: "chip8_scroller", system: "chip8", url: "./assets/roms/chip8_scroller.ch8",
-    note: "Marquesina DEADCODE con la fuente hex" },
+    note: "Demo automática: marquesina DEADCODE con la fuente hex" },
   { id: "schip-bounce",   name: "schip_bounce",   system: "schip", url: "./assets/roms/schip_bounce.ch8",
     golden: { frames: 300, hash: "96b4fc937dc825b9" },
-    note: "Pelota 16x16 en pantalla extendida 128x64" },
+    note: "Demo automática: pelota 16x16 en pantalla extendida 128x64" },
 ];
 
 export const BLARGG_SUITE = [

@@ -39,7 +39,13 @@ demos: build/genrom
 test: all demos
 	bash tests/run_evals.sh
 
+# test de entrada del juego jugable nova_paddle (6 checks de teclado y límites)
+paddle-test: build/genrom
+	$(CC) $(CFLAGS) -o build/paddle-test tests/test_paddle_input.c $(SRC_COMMON) $(SRC_CHIP8)
+	./build/genrom tests/roms/gen
+	./build/paddle-test
+
 clean:
 	rm -rf build
 
-.PHONY: all small demos test clean
+.PHONY: all small demos test paddle-test clean

@@ -60,6 +60,7 @@
           <button data-reset>↺ Reset</button>
           <button data-step>⏭ Paso</button>
           <button data-frame>⏭ Frame</button>
+          <button data-fullscreen title="Pantalla completa (también con el botón ⛶)">⛶ Pantalla completa</button>
         </div>
         <div class="statusline">Estado: <span data-status>cargando WASM…</span></div>
         <div class="statusline">ROM: <span data-rom-name style="color:var(--fg)">(ninguna)</span></div>
@@ -67,12 +68,19 @@
       </div>
 
       <div class="panel">
-        <h3>ROMs incluidas (deterministas)</h3>
+        <h3>🎮 Juegos incluidos</h3>
         <div data-catalog style="display:flex;flex-direction:column;gap:8px">
-          <button data-rom="chip8-bounce">chip8_bounce — pelota 64×32 <span class="mono" style="color:var(--fg-dim);font-size:11px">golden 28c31cf8…</span></button>
-          <button data-rom="chip8-scroller">chip8_scroller — marquesina DEADCODE</button>
+          <button data-rom="nova-paddle"><b>▶ nova_paddle — JUGABLE</b><br><span style="color:var(--fg-dim);font-size:12px">Mueve el bloque con Flechas / WASD / gamepad USB</span></button>
+          <button data-rom="chip8-bounce">chip8_bounce — pelota automática <span class="mono" style="color:var(--fg-dim);font-size:11px">golden 28c31cf8…</span></button>
+          <button data-rom="chip8-scroller">chip8_scroller — marquesina automática</button>
           <button data-rom="schip-bounce">schip_bounce — pelota 128×64 <span class="mono" style="color:var(--fg-dim);font-size:11px">golden 96b4fc93…</span></button>
         </div>
+        <div class="keylegend">
+          <b>⌨️ Controles</b> — CHIP-8: <b>Flechas</b> o <b>WASD</b> mueven · <b>Espacio</b> = acción ·
+          teclado clásico: 1-2-3-4 / Q-W-E-R / A-S-D-F / Z-X-C-V · Game Boy: <b>X</b>=A · <b>Z</b>=B ·
+          <b>Enter</b>=Start · Shift=Select · 🎮 <b>gamepad USB/Bluetooth</b> compatible
+        </div>
+        <p style="margin:10px 0 0;font-size:13px">Tus propios juegos: <b>arrastra un <span class="mono">.ch8</span> o <span class="mono">.gb</span></b> sobre la pantalla (si viene en ZIP, descomprímelo antes).</p>
         <h3 style="margin-top:16px">Telemetría</h3>
         <div class="telemetry">
           <div class="tele"><div class="l">FPS</div><div class="v" data-fps>—</div></div>
@@ -86,6 +94,25 @@
         <p style="margin-top:14px">¿Quieres paletas, quirks por juego, pad táctil y carga de tus propias ROMs?
         <a href="./demo.html">Abre la consola completa →</a></p>
       </div>
+    </div>
+  </section>
+
+  <!-- CONSOLAS SOPORTADAS -->
+  <section class="block" id="consolas">
+    <h2>¿Qué consolas emula? (la verdad, con nombre y apellidos)</h2>
+    <p class="sub">NovaEmu no promete lo imposible: esto es exactamente lo que soporta hoy y por qué.
+    El emulador funciona cargando la ROM del juego (fichero <span class="mono">.ch8</span> / <span class="mono">.gb</span>)
+    y ejecutando sus instrucciones con el mismo C99 compilado a WASM que corre en esta página.</p>
+    <div class="panel" style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr style="text-align:left;color:var(--fg-dim)"><th style="padding:8px">Consola</th><th style="padding:8px">¿Emulada aquí?</th><th style="padding:8px">Notas</th></tr>
+        <tr><td style="padding:8px;border-top:1px solid var(--border)"><b>CHIP-8 / S-CHIP</b> (1977)</td><td style="padding:8px;border-top:1px solid var(--border);color:#10b981"><b>✅ Sí, jugable ahora</b></td><td style="padding:8px;border-top:1px solid var(--border)">Catálogo incluido + tus .ch8 arrastrando</td></tr>
+        <tr><td style="padding:8px;border-top:1px solid var(--border)"><b>Game Boy / DMG</b> (1989)</td><td style="padding:8px;border-top:1px solid var(--border);color:#10b981"><b>✅ Sí, CPU certificada</b></td><td style="padding:8px;border-top:1px solid var(--border)">SM83 11/11 Blargg; tus .gb arrastrando</td></tr>
+        <tr><td style="padding:8px;border-top:1px solid var(--border)">NES · SNES · GBC/GBA · PS1</td><td style="padding:8px;border-top:1px solid var(--border);color:#f59e0b"><b>🔜 Roadmap v1.1–v2.0</b></td><td style="padding:8px;border-top:1px solid var(--border)">Factible en WASM, escalón a escalón (ver Roadmap)</td></tr>
+        <tr><td style="padding:8px;border-top:1px solid var(--border)">PS2 · Xbox · PS3 · Xbox 360</td><td style="padding:8px;border-top:1px solid var(--border);color:#ef4444"><b>❌ Solo nativo</b></td><td style="padding:8px;border-top:1px solid var(--border)">RPCS3/Xenia/xemu: PC potente, no caben en WASM</td></tr>
+        <tr><td style="padding:8px;border-top:1px solid var(--border)"><b>PS5 · Xbox Series X/S</b></td><td style="padding:8px;border-top:1px solid var(--border);color:#ef4444"><b>❌ Imposible en 2026</b></td><td style="padding:8px;border-top:1px solid var(--border)">No existe emulador ni nativo ni en navegador — nadie lo tiene</td></tr>
+      </table>
+      <p style="font-size:13px;margin:10px 0 0;color:var(--fg-dim)">¿Por qué PS5/Xbox no? Son consolas de la generación actual: hardware moderno sin documentar, juegos cifrados y solo 6 años de ingeniería inversa. Un emulador de consola actual tarda ~decenio y medio desde su lanzamiento (PS3 tardó 10 años en correr juegos). Análisis completo con fuentes: <a href="./dev.html?doc=RESEARCH_PS5_XBOX">Research PS5/Xbox →</a></p>
     </div>
   </section>
 
@@ -193,8 +220,8 @@
   import { ConsoleUI } from "./assets/console.js";
   import "./assets/site.js";
   const ui = new ConsoleUI(document.getElementById("nova-console"), { compact: true });
-  ui.boot().then(() => ui.loadFromCatalog({ id: "chip8-bounce", name: "chip8_bounce", system: "chip8", url: "./assets/roms/chip8_bounce.ch8",
-    golden: { frames: 300, hash: "28c31cf8df2ec325" }, note: "Demo sintetizada, determinista (RNG semilla fija 0x1EE7BEEF)" }));
+  ui.boot().then(() => ui.loadFromCatalog({ id: "nova-paddle", name: "nova_paddle", system: "chip8", url: "./assets/roms/nova_paddle.ch8",
+    note: "🎮 JUGABLE: mueve el bloque con Flechas / WASD / gamepad USB" }));
 </script>
 </body>
 </html>
