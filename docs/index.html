@@ -1,198 +1,149 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NovaEmu 3.0 MODERN — PSP, PlayStation 1, N64, DS y Saturn en tu navegador</title>
-<meta name="description" content="La emulación moderna de octubre 2026 en tu navegador: trae la ROM de tu juego de PSP, PS1, Nintendo 64, Nintendo DS o Sega Saturn y juega YA con mando DualSense/Xbox, save states y pantalla completa. Tu ROM nunca sale de tu dispositivo.">
-<link rel="stylesheet" href="./assets/site.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/><rect x='62' y='30' width='16' height='16' fill='%2334d399'/><rect x='22' y='54' width='56' height='8' fill='%2310b981'/><rect x='32' y='70' width='36' height='8' fill='%2334d399'/></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NovaEmu NG — Emulación de nueva generación en tu navegador</title>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<header class="site-header">
-  <a class="brand" href="./index.html">Nova<b>Emu</b></a>
+<header class="top">
+  <a class="logo" href="index.html">NOVA<span>EMU</span> <em>NG</em></a>
   <nav>
-    <a href="./index.html" class="active">Jugar</a>
-    <a href="#moderno">Modernos</a>
-    <a href="#cargar">Cargar ROM</a>
-    <a href="#escena">Escena oct-2026</a>
-    <a href="./demo.html">Lab</a>
-    <a href="./tests.html">Pruebas</a>
-    <a href="#" data-gh>GitHub ↗</a>
+    <a href="index.html" class="active">Inicio</a>
+    <a href="console.html">Consola</a>
+    <a href="tests.html">Banco de pruebas</a>
+    <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">GitHub</a>
   </nav>
 </header>
 
-<main class="wrap">
+<section class="hero">
+  <h1>Emulación de <b>nueva generación</b><br>directo en tu navegador</h1>
+  <p class="lead">
+    NovaEmu NG replica el pipeline de los emuladores PS5 de 2026 —carga de paquetes, módulos con
+    fallbacks, command buffer de GPU y verificación por golden frames— y lo ejecuta sobre WebGL2.
+    Sin instalaciones, sin descargas, pensado también para PCs modestas.
+  </p>
+  <div class="badge-row">
+    <span class="badge"><b>WebGL2</b> con fallback</span>
+    <span class="badge"><b>Gamepad API</b> DualSense/Xbox</span>
+    <span class="badge"><b>60 fps</b> timestep fijo</span>
+    <span class="badge"><b>Save states</b> + rebobinado 12 s</span>
+    <span class="badge"><b>Golden frames</b> Kyty-style</span>
+    <span class="badge"><b>Auto-calidad</b> para PC vieja</span>
+  </div>
+  <div class="cta-row">
+    <a class="btn primary" href="console.html">ABRIR LA CONSOLA Y JUGAR</a>
+    <a class="btn" href="tests.html">Ver banco de pruebas</a>
+  </div>
+</section>
 
-  <!-- HERO -->
-  <section class="hero">
-    <h1>Nova<span>Emu</span> <span class="vtag">3.0 MODERN</span></h1>
-    <p class="lead"><strong>La escena de emulación de octubre 2026, en tu navegador.</strong>
-      Trae la ROM de tu juego —<em>God of War, GTA, Metal Gear Solid, Zelda Ocarina of Time,
-      Pokémon, Panzer Dragoon…</em>— y corre <strong>PSP, PlayStation 1, Nintendo 64,
-      Nintendo DS y Sega Saturn</strong> con núcleos RetroArch WASM: mando DualSense/Xbox,
-      save states, rewind, sonido y pantalla completa. Tu ROM nunca sale de tu dispositivo.</p>
-    <div class="badges">
-      <span class="badge green">✓ PSP · PS1 · N64 · NDS · Saturn</span>
-      <span class="badge green">✓ +Mega-CD · DOS · Arcade · 10 sistemas retro</span>
-      <span class="badge green">✓ DualSense / Xbox / teclado</span>
-      <span class="badge green">✓ Fullscreen + save states + rewind</span>
-      <span class="badge amber">PS5/PS4/Series → ruta nativa (abajo)</span>
-      <span class="badge">núcleo propio CHIP-8 certificado 15/15</span>
-    </div>
-    <div class="controls" style="justify-content:center">
-      <a class="btn primary" href="#cargar">🚀 Cargar mi ROM ahora</a>
-      <a class="btn" href="#moderno">¿Qué juegos puedo correr?</a>
-      <a class="btn" href="#escena">📰 Escena oct-2026</a>
-      <a class="btn" href="./tests.html">Verificar en tu navegador</a>
-    </div>
-  </section>
-
-  <!-- MODERNOS -->
-  <section class="block" id="moderno">
-    <h2>🔥 Juegos modernos — qué corre HOY en tu navegador</h2>
-    <p class="sub">Cada tarjeta lista <strong>juegos reales que probablemente ya tienes</strong>: carga su ROM
-      (ISO/CSO/CHD/Z64/NDS…) desde tu dispositivo y arranca al instante. <strong>Nunca distribuimos ROMs comerciales</strong>
-      — el player corre TU copia, 100% local. Requisitos especiales marcados en cada tarjeta.</p>
-    <div class="sys-grid" id="sys-modern"><!-- generado --></div>
-
-    <div class="panel" style="margin-top:18px;border-color:#78350f">
-      <h3 style="color:#fcd34d">¿PS2 · PS3 · PS4 · PS5 · Switch · Xbox Series?</h3>
-      <p><strong>En octubre 2026 NINGUNA de esas consolas corre dentro de un navegador</strong> — ni en este
-        sitio ni en ningún otro: sus emuladores son apps nativas (Vulkan/D3D12, hilos reales, GB de memoria).
-        Lo que la escena sí logró esta semana (verificado el 27-oct) es esto:</p>
-      <div style="overflow-x:auto">
-        <table id="tabla-nativa">
-          <thead><tr><th>Consola</th><th>Emulador nativo</th><th>Estado 2026</th><th></th></tr></thead>
-          <tbody><!-- generado --></tbody>
-        </table>
+<section class="block">
+  <h2>Catálogo — 3 títulos 3D modernos</h2>
+  <p class="sub">Juegos propios de nueva generación (3D, shaders, partículas, IA) que corren por el
+  pipeline completo del emulador: cada frame pasa por el command buffer NGGPU antes de llegar a WebGL2.</p>
+  <div class="cards">
+    <div class="card">
+      <div class="cover" style="background:linear-gradient(135deg,#0f2027,#2c5364 60%,#ff9a3c)">
+        <span class="cover-title">Turbo Circuit</span><span class="cover-genre">Carreras 3D</span>
       </div>
-      <p style="margin-top:8px">Mientras tanto, el techo real del navegador es exactamente lo que NovaEmu corre bien:
-        <strong>PSP (2004-2014) y DS (2004-2014) son las consolas más modernas emulables en web</strong>, seguidas de
-        PS1/N64/Saturn en 3D.</p>
+      <div class="card-body"><strong>Carreras con física de derrape</strong>
+      <p>Circuito procedural por spline Catmull-Rom, 3 rivales con IA, turbo con barra recargable,
+      derrapes con humo y cámara de persecución dinámica. 3 vueltas cronometradas.</p></div>
+      <a class="card-cta" href="console.html?game=turbo-circuit" style="display:block">JUGAR</a>
     </div>
-
-    <details class="panel" style="margin-top:12px">
-      <summary style="cursor:pointer"><b>Ver también los 10 sistemas retro</b> (SNES, Mega Drive, GBA, NES, Game Boy…)</summary>
-      <div class="sys-grid" id="sys-retro" style="margin-top:12px"><!-- generado --></div>
-    </details>
-  </section>
-
-  <!-- CARGA TU ROM -->
-  <section class="block" id="cargar">
-    <h2>🚀 Carga tu ROM — se queda en tu navegador</h2>
-    <p class="sub">Arrastra <strong>uno o varios archivos</strong> aquí (PS1 multi-.bin: seleccionalos juntos y se
-      empaquetan solos), se detecta el sistema, se guarda <strong>solo en tu dispositivo</strong> (IndexedDB) y
-      arranca el player. También acepta URL https directa. <span class="mono">.iso .cso .pbp .chd .bin .cue .z64 .n64 .v64 .nds .sfc .smc .gba .md .gen .nes .gb .gbc .sms .gg .32x .pce .a26 .vb .zip</span></p>
-    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Suelta aquí tu ROM">
-      <div style="font-size:40px;line-height:1">🕹️</div>
-      <div><b>Arrastra tu ROM aquí</b> o haz clic para elegir el archivo(s)</div>
-      <div class="mono" style="font-size:12.5px;color:var(--fg-dim)">PSP (.iso/.cso/.pbp) · PS1 (.chd/.pbp/.bin+.cue) · N64 (.z64) · DS (.nds) · Saturn (.cue+.bin) · autodetección · sin subidas a ningún servidor</div>
-    </div>
-    <input type="file" id="rom-input" hidden>
-
-    <!-- selector para extensiones ambiguas -->
-    <div class="panel" id="sys-chooser" hidden style="margin-top:12px;border-color:var(--accent)">
-      <h3>¿De qué consola es este archivo?</h3>
-      <p class="sub" id="sys-chooser-file" style="margin-bottom:10px"></p>
-      <div class="controls" id="sys-chooser-btns"><!-- generado --></div>
-    </div>
-
-    <div class="controls" style="margin-top:12px">
-      <input id="rom-url" type="url" placeholder="https://…/mi-juego.cso (URL directa https)" style="flex:1;min-width:220px">
-      <button id="rom-url-go" class="btn primary">▶ Cargar desde URL</button>
-    </div>
-
-    <!-- BIOS -->
-    <div class="panel" style="margin-top:16px">
-      <h3>💾 BIOS / firmware (PS1 · Saturn · Mega-CD · DS)</h3>
-      <p class="sub">PS1 arranca la mayoría de juegos sin BIOS; <strong>Saturn y Mega-CD casi siempre la exigen</strong>.
-        Si la tienes extraída de tu propia consola, guárdala aquí una sola vez (queda en tu dispositivo):</p>
-      <div class="controls">
-        <select id="bios-sys">
-          <option value="psx">PlayStation 1 (scph5501.bin / scph5500 / scph5502 o zip)</option>
-          <option value="saturn">Sega Saturn (saturn.bin o zip)</option>
-          <option value="segacd">Sega CD (bios_CD_U/E/J.bin o zip)</option>
-          <option value="nds">Nintendo DS (bios7.bin + bios9.bin + firmware.bin o zip)</option>
-        </select>
-        <button id="bios-btn" class="btn">📁 Elegir y guardar BIOS</button>
-        <input type="file" id="bios-input" hidden>
+    <div class="card">
+      <div class="cover" style="background:linear-gradient(135deg,#0b0d2a,#41295a 60%,#4fc3f7)">
+        <span class="cover-title">Star Raid</span><span class="cover-genre">Combate espacial</span>
       </div>
-      <div id="bios-list" style="margin-top:8px"><!-- generado --></div>
+      <div class="card-body"><strong>Caza estelar 6DOF</strong>
+      <p>Vuelo de 6 grados de libertad, oleadas enemigas con anticipación de tiro, escudos
+      regenerativos, rádar táctico, postquemador y explosiones con partículas.</p></div>
+      <a class="card-cta" href="console.html?game=star-raid" style="display:block">JUGAR</a>
     </div>
-
-    <p class="sub" style="margin-top:10px">⚖️ NovaEmu no incluye ni distribuye ROMs con copyright: corre los
-      <strong>juegos homebrew incluidos</strong> (abajo) y <strong>las copias de respaldo que aportas</strong> de tus propios juegos.</p>
-  </section>
-
-  <!-- ESCENA OCT-2026 -->
-  <section class="block" id="escena">
-    <h2>📰 Escena de emulación — octubre 2026 (repos actuales)</h2>
-    <p class="sub">Lo que está moviendo la escena AHORA, verificado el 27-oct vía API de GitHub + prensa
-      (las estrellas se refrescan en vivo al abrir esta página). <strong>Todos son proyectos NATIVOS de PC:
-      ninguno corre en navegador — por eso NovaEmu existe.</strong></p>
-    <div class="escena-grid" id="escena-grid"><!-- generado --></div>
-
-    <div class="grid cols-2" style="margin-top:18px">
-      <div class="panel">
-        <h3>🗓️ Crónica de la semana</h3>
-        <ul class="news" id="news-list"><!-- generado --></ul>
+    <div class="card">
+      <div class="cover" style="background:linear-gradient(135deg,#2b1055,#7597de 60%,#ffb86b)">
+        <span class="cover-title">Shadow Ruins</span><span class="cover-genre">Plataformas 3D</span>
       </div>
-      <div class="panel">
-        <h3>🧬 Técnicas que adoptamos de esos repos</h3>
-        <p><strong>KytyPS5 / SharpEmu</strong> → testing por golden-frames: capturas de referencia comparadas
-          bit a bit (nuestro banco usa goldens de frame-300 + Blargg).</p>
-        <p><strong>AnyPS5</strong> → carga por capas con fallback: si un componente falla, se degrada con
-          aviso claro en vez de pantalla en blanco (nuestro player prueba 2 CDNs y overlay de error).</p>
-        <p><strong>PS5X360</strong> → input nativo de mando: DualSense/Xbox mapeados sin configuración
-          (Gamepad API + indicador en vivo en el player).</p>
-        <p><strong>REA-Prompts</strong> → metodología REAP de ingeniería inversa que guía el Lab del motor propio.</p>
-      </div>
+      <div class="card-body"><strong>Plataformas al atardecer</strong>
+      <p>Ruinas flotantes con doble salto, coyote-time, plataformas móviles, pinchos, 10 gemas,
+      checkpoints amables y un portal final que se activa al completar la colección.</p></div>
+      <a class="card-cta" href="console.html?game=shadow-ruins" style="display:block">JUGAR</a>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- INCLUIDOS -->
-  <section class="block" id="incluidos">
-    <h2>🎮 Juegos incluidos — clic y a jugar (proof instantánea)</h2>
-    <p class="sub">Cinco juegos completos <strong>legales</strong> (homebrew/freeware con licencia verificada)
-      para comprobar que el player funciona sin configurar nada. Los modernos los aportas tú arriba.</p>
-    <div class="lib-grid" id="lib-grid"><!-- generado --></div>
+<section class="block">
+  <h2>Cómo funciona — el pipeline NG</h2>
+  <p class="sub">Cada título es un paquete NovaPKG. Al arrancar, la VM resuelve sus módulos del sistema
+  con cadena de fallbacks (como hace AnyPS5 con libSceSysmodule) y el juego solo habla con la API virtual.</p>
+  <div class="pipe">
+    <div><b>1 · NovaPKG</b>Manifiesto validado (auditoría estilo AnyPS5 import_audit) + factory aislada.</div>
+    <div><b>2 · SYSMOD</b>GPU → audio → input → save: cada módulo resuelve su backend con fallbacks auditables.</div>
+    <div><b>3 · NGVM</b>Timestep fijo a 60 Hz, RNG determinista, watchdog con recuperación de crashes.</div>
+    <div><b>4 · Command buffer</b>El juego emite comandos (camera/light/mesh/points) — nunca toca WebGL.</div>
+    <div><b>5 · NGGPU → WebGL2</b>Tabla de dispatch traduce comandos al backend real (WebGL2 → WebGL1 → nulo).</div>
+    <div><b>6 · Golden frames</b>Hash FNV-1a del framebuffer comparado por el banco de pruebas tras cada cambio.</div>
+  </div>
+</section>
 
-    <h3 style="margin-top:26px">🕹️ Arcade Nova — obra propia del motor certificado (CHIP-8/S-CHIP)</h3>
-    <p class="sub">Cuatro juegos ensamblados a mano con nuestro <span class="mono">c8asm</span> sobre el
-      núcleo WASM bit-exacto (Blargg 12/12, goldens frame-300). Son la prueba de certificación del motor propio.</p>
-    <div class="lib-grid" id="nova-grid"><!-- generado --></div>
-  </section>
-
-  <!-- LAB -->
-  <section class="block">
-    <div class="grid cols-3">
-      <div class="panel">
-        <h3>🧪 Lab del motor propio</h3>
-        <p>Nuestro núcleo C99→WASM bit-exacto: CHIP-8/S-CHIP y Game Boy, quirks, turbo, paletas y
-          captura en la <a href="./demo.html">Demo completa</a>. Certificado con Blargg 12/12.</p>
-      </div>
-      <div class="panel">
-        <h3>✅ Banco de pruebas</h3>
-        <p>Goldens bit-exacto, determinismo, Blargg y <strong>checks web v3</strong> (ROMs, CDNs, catálogo
-          moderno, ZIP local, aislamiento PSP) en <a href="./tests.html">tests.html</a>. Todo en tu navegador.</p>
-      </div>
-      <div class="panel">
-        <h3>⚖️ Legal</h3>
-        <p>Los juegos incluidos son homebrew/freeware con licencia verificada (ficha de cada uno).
-          <strong>No incluimos ROMs comerciales</strong>: carga las tuyas desde tu propio dispositivo.</p>
-      </div>
+<section class="block">
+  <h2>La escena real que inspiró este proyecto</h2>
+  <p class="sub">Verificado el 29-oct-2026 contra la API de GitHub y la prensa especializada.
+  Estos son los proyectos de emulación PS5/Switch más activos del momento y lo que tomamos de cada uno.</p>
+  <div class="scene-grid">
+    <div class="scene-card">
+      <h3>AnyPS5</h3>
+      <div class="stars">★ 49.323</div>
+      <p>Port automático de ejecutables PS5 a Windows/Linux (no emula: relinkea). 90% de las librerías
+      del sistema implementadas. Último push: 28-oct-2026.</p>
+      <div class="meta">boykopovar/AnyPS5 · C++ · GPL-2.0</div>
+      <div class="take">→ Nos enseñó: módulos con fallbacks, auditoría de imports, frame dumps para depurar.</div>
     </div>
-  </section>
-</main>
+    <div class="scene-card">
+      <h3>KytyPS5</h3>
+      <div class="stars">★ 10.078</div>
+      <p>Capa de traducción PS5 para Windows/Linux/macOS: 368 juegos probados, 199 llegan a gameplay
+      (54%). Release 23-oct-2026; Beyond Good &amp; Evil in-game el 26-oct.</p>
+      <div class="meta">KytyPS5/KytyPS5 · C++ · GPL-2.0</div>
+      <div class="take">→ Nos enseñó: tests que comparan bytes CPU vs GPU (nuestros golden frames), recuperación ante crashes.</div>
+    </div>
+    <div class="scene-card">
+      <h3>SharpEmu</h3>
+      <div class="stars">★ 6.484</div>
+      <p>Emulador experimental PS5: 17 títulos llegan a gameplay, 8 corren a 60 fps. Llegó a ejecutar
+      Ghost of Yotei (1-2 fps) el 10-oct. Último push: 29-oct-2026.</p>
+      <div class="meta">SharpEmu/SharpEmu · C# · GPL-2.0</div>
+      <div class="take">→ Nos enseñó: interpreter de comandos AGC/GNM con tabla de dispatch y conformance con sentinela 0xCAFEBABE.</div>
+    </div>
+    <div class="scene-card">
+      <h3>REA-Prompts</h3>
+      <div class="stars">★ 3.109</div>
+      <p>Prompts y metodología REA (Reverse Engineer Anything) para desmontar y replicar software.
+      Licencia MIT. Último push: 26-oct-2026.</p>
+      <div class="meta">JoasASantos/REA-Prompts · MIT</div>
+      <div class="take">→ Nos enseñó: la disciplina de ingeniería inversa aplicada al estudio de los tres emuladores de arriba.</div>
+    </div>
+  </div>
+</section>
 
-<footer>
-  NovaEmu 3.0 MODERN · MIT · núcleos de consola por <a href="https://emulatorjs.org" target="_blank" rel="noopener">EmulatorJS</a> (GPL-3.0, RetroArch WASM) · threads por coi-serviceworker (patrón MIT)
-  <br><a href="#" data-gh>Repositorio</a> · <a href="./demo.html">Lab</a> · <a href="./tests.html">Pruebas</a> · hecho para PCs viejas también
+<section class="block">
+  <div class="note">
+    <b>Nota honesta de alcance:</b> los juegos comerciales de PS5/Xbox Series/Switch son binarios
+    x86-64/ARM64 con decenas de GB que exigen las herramientas de escritorio de la escena (AnyPS5,
+    KytyPS5, SharpEmu) sobre hardware potente — ningún navegador del mundo los ejecuta hoy, y distribuir
+    sus imágenes sería piratería. NovaEmu NG trae al navegador la <b>arquitectura de esa generación</b>:
+    su pipeline, sus técnicas de robustez y su forma de probarse, con un catálogo 3D propio jugable y
+    soporte para paquetes NovaPKG creados por la comunidad. Si quieres correr juegos retail de PS5,
+    usa los proyectos de la escena enlazados arriba.
+  </div>
+</section>
+
+<footer class="foot">
+  <span>NovaEmu NG — construido con ingeniería inversa metodológica (REA) sobre la escena oct-2026</span>
+  <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">github.com/eddyflores100-lang/novaemu</a>
 </footer>
 
-<script src="./assets/catalog.js"></script>
-<script src="./assets/zip.js"></script>
-<script type="module" src="./assets/app.js"></script>
+<script src="assets/site.js"></script>
 </body>
 </html>

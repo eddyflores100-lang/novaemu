@@ -1,268 +1,63 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Banco de pruebas — NovaEmu</title>
-<meta name="description" content="Verifica el build de NovaEmu en tu navegador: goldens bit-exacto, determinismo, suite Blargg completa y checks web v2 (ROMs incluidas, CDNs, autodetección).">
-<link rel="stylesheet" href="./assets/site.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2309090b'/><rect x='22' y='30' width='16' height='16' fill='%2310b981'/><rect x='62' y='30' width='16' height='16' fill='%2334d399'/><rect x='22' y='54' width='56' height='8' fill='%2310b981'/><rect x='32' y='70' width='36' height='8' fill='%2334d399'/></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NovaEmu NG — Banco de pruebas</title>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<header class="site-header">
-  <a class="brand" href="./index.html">Nova<b>Emu</b></a>
+<header class="top">
+  <a class="logo" href="index.html">NOVA<span>EMU</span> <em>NG</em></a>
   <nav>
-    <a href="./index.html">Inicio</a>
-    <a href="./demo.html">Lab</a>
-    <a href="./tests.html" class="active">Banco de pruebas</a>
-    <a href="./dev.html">Docs</a>
-    <a href="#" data-gh>GitHub ↗</a>
+    <a href="index.html">Inicio</a>
+    <a href="console.html">Consola</a>
+    <a href="tests.html" class="active">Banco de pruebas</a>
+    <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">GitHub</a>
   </nav>
 </header>
 
-<main class="wrap">
-  <section class="hero" style="padding:34px 0 10px;text-align:left">
-    <h1 style="font-size:clamp(26px,4vw,38px)">Banco de <span>pruebas</span></h1>
-    <p class="lead" style="margin-bottom:0"><span id="total-cnt">24</span> checks del motor (goldens bit-exacto, determinismo y Blargg
-      leyendo el puerto serie) + <strong>12 checks web v3</strong>: integridad de las 5 ROMs incluidas
-      (magic bytes), CDNs, catálogo moderno (PSP/PSX/N64/DS/Saturn), empaquetador ZIP local, aislamiento para
-      núcleos threaded y datos de la escena oct-2026.</p>
-  </section>
+<main class="tests-wrap">
+  <h1>Banco de pruebas</h1>
+  <p class="sub" style="color:#8b95ab;max-width:820px;line-height:1.6;margin-top:8px">
+    Metodología de la escena real: golden frames con hash del framebuffer (KytyPS5 compara bytes),
+    conformance GPU contra referencia calculada en CPU con sentinela (SharpEmu 0xCAFEBABE),
+    frame dumps (AnyPS5 APS5_DUMP_FRAMES) y watchdog de recuperación. Si algo falla aquí,
+    se depura antes de publicar.
+  </p>
 
-  <section class="block">
-    <div class="panel">
-      <div class="controls">
-        <button id="run" class="primary">▶ Ejecutar todos los tests</button>
-        <span id="summary" class="mono" style="font-size:13.5px;color:var(--fg-dim)">sin ejecutar</span>
-      </div>
-      <div class="progress"><div id="bar"></div></div>
-      <div id="rows">
-        <div class="test-row"><span class="res">·</span><span class="name" style="color:var(--fg-dim)">Pulsa «Ejecutar» — todo corre en tu máquina, sin servidor.</span></div>
-      </div>
-    </div>
+  <div class="summary">
+    <div class="sum-card ok" id="sumState"><b>…</b><small>estado</small></div>
+    <div class="sum-card"><b id="nPass">0</b><small>pruebas superadas</small></div>
+    <div class="sum-card"><b id="nTotal">0</b><small>total</small></div>
+    <div class="sum-card"><b id="nErr">0</b><small>errores JS globales</small></div>
+    <div class="sum-card"><b id="nMs">0</b><small>ms de batería</small></div>
+    <div class="sum-card"><b id="backend">…</b><small>backend GL</small></div>
+  </div>
 
-    <div class="panel" style="margin-top:18px">
-      <div class="controls">
-        <button id="run-web" class="primary">▶ Ejecutar los 12 checks web v3</button>
-        <span id="summary-web" class="mono" style="font-size:13.5px;color:var(--fg-dim)">sin ejecutar</span>
-      </div>
-      <div class="progress"><div id="bar-web"></div></div>
-      <div id="rows-web">
-        <div class="test-row"><span class="res">·</span><span class="name" style="color:var(--fg-dim)">ROMs incluidas, CDNs, catálogo moderno, ZIP local, aislamiento y escena.</span></div>
-      </div>
-    </div>
+  <div class="golden-box">
+    Golden frames: la primera ejecución registra el hash en <code>localStorage</code>; las siguientes
+    comparan contra él para detectar regresiones de renderizado. El hash es estable dentro del mismo
+    entorno (GPU/drivers); si cambias de máquina, se re-registra una vez.
+  </div>
 
-    <div class="grid cols-3" style="margin-top:16px">
-      <div class="panel">
-        <h3>¿Qué verifica el golden?</h3>
-        <p>Cada demo determinista tiene un hash FNV-1a-64 del framebuffer capturado en el frame 300
-        por el binario <strong>nativo</strong>. Si el WASM reproduce ese hash bit a bit, tu navegador
-        ejecuta el mismo motor certificado.</p>
-      </div>
-      <div class="panel">
-        <h3>¿Qué verifica Blargg?</h3>
-        <p>Las ROMs de Shawn «blargg» Blargg son el estándar de facto para certificar CPUs GB:
-        verifican cada instrucción con checksums CRC-32 y publican el veredicto por el puerto serie.
-        Aquí capturamos ese mismo <code>Passed</code>.</p>
-      </div>
-      <div class="panel">
-        <h3>¿Por qué importa el determinismo?</h3>
-        <p>Un emulador no determinista no puede verificar nada: el mismo input debe producir el mismo
-        output siempre. Dos pasadas con hashes idénticos demuestran que el pacer y el RNG no contaminan.</p>
-      </div>
-    </div>
-  </section>
+  <table class="tests" id="tbl">
+    <thead><tr><th>#</th><th>Prueba</th><th>Duración</th><th>Estado</th></tr></thead>
+    <tbody></tbody>
+  </table>
 </main>
 
-<footer>
-  NovaEmu 3.0 · MIT · oráculo portable: <code>docs/assets/bench.js</code> + checks web v3 en esta página
-  <br><a href="#" data-gh>Repositorio</a> · <a href="./demo.html">Consola completa</a>
+<footer class="foot">
+  <span>NovaEmu NG — banco de pruebas</span>
+  <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">github.com/eddyflores100-lang/novaemu</a>
 </footer>
 
-<script src="./assets/catalog.js"></script>
-<script src="./assets/zip.js"></script>
-<script type="module">
-  import "./assets/site.js";
-  import { TESTS, runSuite } from "./assets/bench.js";
-
-  document.getElementById("total-cnt").textContent = TESTS.length;
-  const rows = document.getElementById("rows");
-  const bar = document.getElementById("bar");
-  const summary = document.getElementById("summary");
-  const runBtn = document.getElementById("run");
-
-  // filas iniciales
-  rows.innerHTML = "";
-  const cells = {};
-  for (const t of TESTS) {
-    const div = document.createElement("div");
-    div.className = "test-row";
-    div.innerHTML = `<span class="res">·</span><span class="name">${t.id} — ${t.name}</span>
-                     <span class="time"></span><span class="detail mono" style="font-size:11.5px;color:var(--fg-dim);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>`;
-    rows.appendChild(div);
-    cells[t.id] = { res: div.querySelector(".res"), time: div.querySelector(".time"), detail: div.querySelector(".detail") };
-  }
-
-  runBtn.addEventListener("click", async () => {
-    runBtn.disabled = true;
-    summary.textContent = "ejecutando…";
-    let done = 0;
-    const result = await runSuite((id, status, detail, ms) => {
-      const c = cells[id];
-      if (c) {
-        c.res.textContent = status === "pass" ? "PASS" : status === "fail" ? "FAIL" : "…";
-        c.res.className = "res " + status;
-        c.time.textContent = ms ? (ms / 1000).toFixed(2) + "s" : "";
-        c.detail.textContent = detail ?? "";
-      }
-      if (status !== "run") {
-        done++;
-        bar.style.width = (done / TESTS.length * 100).toFixed(0) + "%";
-      }
-    });
-    summary.textContent = `${result.pass}/${result.total} PASS` + (result.fail ? ` · ${result.fail} FAIL` : " · SUITE COMPLETA EN VERDE");
-    summary.style.color = result.fail ? "var(--red)" : "var(--accent-2)";
-    runBtn.disabled = false;
-  });
-
-  /* ================= checks web v2 ================= */
-  const C = window.NOVA_CATALOG;
-  const rowsW = document.getElementById("rows-web");
-  const barW = document.getElementById("bar-web");
-  const sumW = document.getElementById("summary-web");
-  const runW = document.getElementById("run-web");
-
-  const WEB_TESTS = [
-    { id: "W1", name: "catálogo: ≥14 sistemas y ≥5 juegos declarados", fn: async () => {
-        const s = Object.keys(C.SYSTEMS).length, g = C.GAMES.length;
-        if (s < 14 || g < 5) throw new Error(`sistemas=${s} juegos=${g}`);
-        return `${s} sistemas · ${g} juegos`;
-    }},
-    { id: "W2", name: "detectCore: nes/sfc/gba/md/z64/a26/gbc", fn: async () => {
-        const cases = [["a.nes","nes"],["b.sfc","snes"],["c.gba","gba"],["d.md","segaMD"],["e.z64","n64"],["f.a26","atari2600"],["g.gbc","gbc"]];
-        for (const [f, want] of cases) {
-          const got = C.detectCore(f);
-          if (got !== want) throw new Error(`${f} → ${got} (esperaba ${want})`);
-        }
-        return "7/7 extensiones OK";
-    }},
-    { id: "W3", name: "las 5 ROMs incluidas existen con magic bytes correctos", fn: async () => {
-        const LOGO = [0xCE,0xED,0x66,0x66,0xCC,0x0D,0x00,0x0B,0x03,0x73,0x00,0x83,0x00,0x0C,0x00,0x0D];
-        let ok = 0;
-        for (const g of C.GAMES) {
-          const r = await fetch(C.gameUrl(g));
-          if (!r.ok) throw new Error(`${g.file}: HTTP ${r.status}`);
-          const buf = new Uint8Array(await r.arrayBuffer());
-          if (buf.length !== g.bytes) throw new Error(`${g.file}: ${buf.length} B ≠ ${g.bytes} B`);
-          const sys = C.SYSTEMS[g.system].core;
-          if (sys === "nes" && !(buf[0]===0x4E&&buf[1]===0x45&&buf[2]===0x53&&buf[3]===0x1A)) throw new Error(g.file+": cabecera NES");
-          if ((sys==="gb"||sys==="gbc") && !LOGO.every((b,i)=>buf[0x104+i]===b)) throw new Error(g.file+": logo GB");
-          if (sys==="segaMD" && !String.fromCharCode(...buf.slice(0x100,0x104)).includes("SEGA")) throw new Error(g.file+": SEGA");
-          if (sys==="gba" && buf[0xB2]!==0x96) throw new Error(g.file+": logo GBA");
-          ok++;
-        }
-        return `${ok}/5 ROMs íntegras (${(C.GAMES.reduce((a,g)=>a+g.bytes,0)/1e6).toFixed(1)} MB)`;
-    }},
-    { id: "W4", name: "CDN primario EmulatorJS accesible", fn: async () => {
-        const r = await fetch("https://cdn.emulatorjs.org/stable/data/loader.js", { method: "GET" });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const t = await r.text();
-        if (!t.includes("EJS_pathtodata")) throw new Error("loader inesperado");
-        return "loader.js OK (" + (t.length/1024).toFixed(1) + " KB)";
-    }},
-    { id: "W5", name: "réplica jsDelivr accesible (fallback)", fn: async () => {
-        const r = await fetch("https://cdn.jsdelivr.net/npm/@emulatorjs/emulatorjs@4.2.3/data/loader.js");
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return "fallback OK";
-    }},
-    { id: "W6", name: "localización es-ES del player accesible", fn: async () => {
-        const r = await fetch("https://cdn.emulatorjs.org/stable/data/localization/es-ES.json");
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const j = await r.json();
-        return "es-ES: " + Object.keys(j).length + " claves";
-    }},
-    { id: "W7", name: "play.html valida parámetros (sin path traversal)", fn: async () => {
-        const r = await fetch("./play.html");
-        const t = await r.text();
-        if (!t.includes("A-Za-z0-9._-")) throw new Error("falta regex de validación");
-        if (!t.includes("https:\\/\\/")) throw new Error("falta guard https");
-        return "regex + guard https presentes";
-    }},
-    { id: "W8", name: "núcleo propio sigue registrado (modo legacy)", fn: async () => {
-        if (C.NOVA_GAMES.length < 4) throw new Error("arcade nova incompleto");
-        const r = await fetch("./wasm/novaemu.wasm");
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return "novaemu.wasm + 4 juegos nova OK";
-    }},
-    { id: "W9", name: "catálogo moderno: PSP/PSX/N64/NDS/Saturn/Mega-CD/DOS/Arcade", fn: async () => {
-        const need = ["psp","psx","n64","nds","segaSaturn","segaCD","dos","arcade"];
-        const faltan = need.filter(k => !C.SYSTEMS[k]);
-        if (faltan.length) throw new Error("faltan: " + faltan.join(","));
-        if (C.SYSTEMS.psp.threads !== true) throw new Error("PSP debe marcar threads");
-        if (C.SYSTEMS.psp.core !== "psp" || C.SYSTEMS.n64.core !== "n64" || C.SYSTEMS.nds.core !== "nds") throw new Error("cores mal");
-        if (!C.SYSTEMS.psx.bios?.opcional) throw new Error("BIOS PSX debe ser opcional");
-        if (!C.SYSTEMS.segaSaturn.bios || C.SYSTEMS.segaSaturn.bios.opcional) throw new Error("BIOS Saturn requerida");
-        if (!C.SYSTEMS.psp.games?.length || !C.SYSTEMS.psx.games?.length) throw new Error("guía de juegos vacía");
-        const totalJuegos = need.reduce((a,k)=>a+(C.SYSTEMS[k].games?.length||0),0);
-        return `8 sistemas modernos · ${totalJuegos} juegos icónicos en la guía`;
-    }},
-    { id: "W10", name: "extensión ambigua .iso pregunta (PSP vs PSX) y ZIP local funciona", fn: async () => {
-        if (!C.AMBIGUOUS.iso.includes("psp") || !C.AMBIGUOUS.iso.includes("psx")) throw new Error(".iso no marcada ambigua");
-        if (C.detectCore("juego.iso") !== "psx") throw new Error("detectCore .iso debe preferir psx");
-        if (!window.NovaZip) throw new Error("zip.js no cargado");
-        if (NovaZip.crc32(new TextEncoder().encode("123456789")) !== 0xCBF43926) throw new Error("CRC-32KnownAnswer");
-        const u8 = await NovaZip.pack([
-          { name: "juego.cue", data: new TextEncoder().encode("FILE \"juego.bin\" BINARY\n") },
-          { name: "juego.bin", data: new Uint8Array(256).fill(0xAB) }
-        ]);
-        const eocd = u8.length - 22;
-        const sig = [u8[eocd],u8[eocd+1],u8[eocd+2],u8[eocd+3]].map(b=>b.toString(16).padStart(2,"0")).join("");
-        if (sig !== "504b0506") throw new Error("EOCD inválido: " + sig); /* PK\x05\x06 little-endian */
-        const pk = (u8[0]===0x50&&u8[1]===0x4b);
-        if (!pk) throw new Error("firma local PK");
-        return `CRC ok · zip ${u8.length} B con cue+bin válido (PK…EOCD)`;
-    }},
-    { id: "W11", name: "coi-serviceworker servido (núcleos threaded PSP/DOS)", fn: async () => {
-        const r = await fetch("./coi-serviceworker.js");
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const t = await r.text();
-        if (!t.includes("Cross-Origin-Embedder-Policy")) throw new Error("falta COEP");
-        if (!t.includes("Cross-Origin-Opener-Policy")) throw new Error("falta COOP");
-        return "COOP/COEP listos" + (self.crossOriginIsolated ? " · aislamiento ACTIVO" : " · se activará tras recarga en el player");
-    }},
-    { id: "W12", name: "escena oct-2026 y ruta nativa con datos", fn: async () => {
-        if (C.ESCENA.length < 7) throw new Error("escena incompleta");
-        if (!C.ESCENA.every(r => /^https:\/\/github\.com\/.+\/.+/.test(r.url))) throw new Error("URL de repo inválida");
-        if (C.NOTICIAS.length < 6) throw new Error("noticias incompletas");
-        if (C.NATIVA.length < 8) throw new Error("ruta nativa incompleta");
-        return `${C.ESCENA.length} repos · ${C.NOTICIAS.length} noticias · ${C.NATIVA.length} rutas nativas`;
-    }}
-  ];
-
-  rowsW.innerHTML = "";
-  const cellsW = {};
-  for (const t of WEB_TESTS) {
-    const div = document.createElement("div");
-    div.className = "test-row";
-    div.innerHTML = `<span class="res">·</span><span class="name">${t.id} — ${t.name}</span>
-                     <span class="detail mono" style="font-size:11.5px;color:var(--fg-dim);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>`;
-    rowsW.appendChild(div);
-    cellsW[t.id] = { res: div.querySelector(".res"), detail: div.querySelector(".detail") };
-  }
-  runW.addEventListener("click", async () => {
-    runW.disabled = true; sumW.textContent = "ejecutando…";
-    let done = 0, pass = 0;
-    for (const t of WEB_TESTS) {
-      const c = cellsW[t.id];
-      c.res.textContent = "…"; c.res.className = "res run";
-      try { const d = await t.fn(); c.res.textContent = "PASS"; c.res.className = "res pass"; c.detail.textContent = d ?? ""; pass++; }
-      catch (e) { c.res.textContent = "FAIL"; c.res.className = "res fail"; c.detail.textContent = String(e.message || e).slice(0, 80); }
-      done++; barW.style.width = (done / WEB_TESTS.length * 100).toFixed(0) + "%";
-    }
-    sumW.textContent = `${pass}/${WEB_TESTS.length} PASS` + (pass === WEB_TESTS.length ? " · WEB EN VERDE" : " · REVISAR FAILS");
-    sumW.style.color = pass === WEB_TESTS.length ? "var(--accent-2)" : "var(--red)";
-    runW.disabled = false;
-  });
-</script>
+<script src="assets/site.js"></script>
+<script src="assets/ng-core.js"></script>
+<script src="assets/ng-system.js"></script>
+<script src="assets/game-turbo.js"></script>
+<script src="assets/game-star.js"></script>
+<script src="assets/game-ruins.js"></script>
+<script src="assets/tests.js"></script>
 </body>
 </html>
