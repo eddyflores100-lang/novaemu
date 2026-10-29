@@ -1,642 +1,290 @@
-/* NovaEmu Web — consola interactiva (canvas, bucle rAF, entrada, telemetría).
- * Usada por index.html (modo compacto) y demo.html (modo completo).
- */
-import { NovaEmu, PALETTES, paletteU32, C8_KEYS, GB_KEYS, ROM_CATALOG, NOVA_GAMES } from "./nova-core.js";
-import { GamepadManager, FullscreenManager, Buzzer, SaveStates } from "./nova-plus.js";
+/* ============================================================
+   NovaEmu NG — UI de la consola
+   Corrección de las quejas de Task 12: el juego INICIA al pulsar,
+   los controles se muestran, la pantalla completa FUNCIONA.
+   ============================================================ */
+(function () {
+'use strict';
+const NG = window.NG;
+const $ = function (id) { return document.getElementById(id); };
 
-/* Traduce e.key → código estilo KeyboardEvent.code (fallback para eventos
- * que llegan sin e.code: teclados remotos, automatización, etc.) */
-const codeFromKey = (k) => {
-  if (!k) return "";
-  if (k === " ") return "Space";
-  if (/^Arrow/.test(k)) return k;
-  if (/^[a-z]$/i.test(k)) return "Key" + k.toUpperCase();
-  if (/^[0-9]$/.test(k)) return "Digit" + k;
-  return k;
-};
+const canvas = $('screen');
+const vm = new NG.NGVM({
+  canvas: canvas,
+  onHalt: function (e) { showHalt(e); },
+  onStateChange: function () { refreshChips(); }
+});
+window.__vm = vm; // depuración
 
-/* ---------------------------- Renderer ---------------------------- */
-export class ScreenRenderer {
-  constructor(canvas) {
-    this.cv = canvas;
-    this.img = null;
-    this.lut = paletteU32(PALETTES[0]);
-    this.paletteId = PALETTES[0].id;
-    this.scanlines = false;
-    this.ctx = canvas.getContext("2d");
-  }
-  setPalette(id) {
-    const p = PALETTES.find((x) => x.id === id) ?? PALETTES[0];
-    this.paletteId = p.id;
-    this.lut = paletteU32(p);
-    // repintar inmediato con el último fb si existe
-    if (this.lastFb) this.draw(this.lastFb, this.lastW, this.lastH);
-  }
-  setScanlines(v) { this.scanlines = !!v; this.cv.parentElement.classList.toggle("scanlines", !!v); }
-  clear() {
-    if (this.ctx) this.ctx.clearRect(0, 0, this.cv.width, this.cv.height);
-    this.img = null; this.lastFb = null;
-  }
-  draw(fb, w, h) {
-    this.lastFb = fb; this.lastW = w; this.lastH = h;
-    if (!this.ctx) this.ctx = this.cv.getContext("2d");
-    if (this.cv.width !== w || this.cv.height !== h || !this.img) {
-      this.cv.width = w; this.cv.height = h;
-      this.img = new ImageData(w, h);
-    }
-    const buf = new Uint32Array(this.img.data.buffer);
-    const n = Math.min(fb.length, buf.length);
-    for (let i = 0; i < n; i++) buf[i] = this.lut[fb[i] & 3];
-    this.ctx.putImageData(this.img, 0, 0);
-  }
+const current = { pkg: null };
+let rewindHold = null;
+
+/* ---------------- arranque de un juego ---------------- */
+function boot(pkg) {
+  hideHalt();
+  const r = vm.loadPackage(pkg);
+  if (!r.ok) return;
+  current.pkg = pkg;
+  vm.fitCanvas();
+  vm.startLoop();
+  $('overlay').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  $('bar').classList.remove('hidden');
+  buildControls(pkg);
+  setupTouch(pkg);
+  if (vm.modules.audio !== 'webaudio') $('btnSound').textContent = 'Sonido: no disponible';
+  else $('btnSound').textContent = 'Sonido: activado';
+  refreshChips();
+  NGLog.push('UI', 'juego en ejecución: ' + pkg.title);
 }
 
-/* ---------------------------- Consola ----------------------------- */
-export class ConsoleUI {
-  /**
-   * @param root elemento contenedor (busca[data-*] dentro)
-   * @param opts { compact:boolean }
-   */
-  constructor(root, opts = {}) {
-    this.root = root;
-    this.compact = !!opts.compact;
-    this.emu = null;
-    this.renderer = new ScreenRenderer(root.querySelector("[data-screen]"));
-    this.playing = false;
-    this.ips = 11;            // instrucciones/frame CHIP-8 (≈1000 ips a 60fps)
-    this.turbo = 1;           // GB: frames por tick
-    this.frames = 0;
-    this.fps = 0;
-    this.goldenOk = false;
-    this.goldenArmed = null;  // { frames, hash }
-    this.romName = "(ninguna)";
-    this._raf = null;
-    this._lastT = 0;
-    this._acc = 0;
-    this._fpsT = 0;
-    this._fpsN = 0;
-    this._onFrame = null;     // callback externo (test bench)
-    this._bindDom();
-  }
-
-  async boot(autoRom = null) {
-    this.emu = await NovaEmu.load();
-    this.setStatus("WASM cargado · " + this.wasmSizeLabel());
-    if (autoRom) await this.loadFromCatalog(autoRom);
-    this.startLoop();
-  }
-
-  wasmSizeLabel() {
-    try {
-      const mod = this.emu.w.memory.buffer.byteLength;
-      return (mod / 65536) + " páginas de memoria";
-    } catch { return "listo"; }
-  }
-
-  _bindDom() {
-    const q = (sel) => this.root.querySelector(sel);
-    this.el = {
-      status:   q("[data-status]"),
-      play:     q("[data-play]"),
-      reset:    q("[data-reset]"),
-      step:     q("[data-step]"),
-      frameBtn: q("[data-frame]"),
-      palette:  q("[data-palette]"),
-      scan:     q("[data-scan]"),
-      ips:      q("[data-ips]"),
-      ipsVal:   q("[data-ips-val]"),
-      turbo:    q("[data-turbo]"),
-      turboVal: q("[data-turbo-val]"),
-      file:     q("[data-file]"),
-      drop:     q("[data-drop]"),
-      catalog:  q("[data-catalog]"),
-      serial:   q("[data-serial]"),
-      quirks:   q("[data-quirks]"),
-      sysBadge: q("[data-sys]"),
-      fps:      q("[data-fps]"),
-      frames:   q("[data-frames]"),
-      hash:     q("[data-hash]"),
-      ops:      q("[data-ops]"),
-      golden:   q("[data-golden]"),
-      romName:  q("[data-rom-name]"),
+/* ---------------- biblioteca de juegos ---------------- */
+function buildLibrary() {
+  const grid = $('cards');
+  grid.innerHTML = '';
+  NG.NGPackage.list().forEach(function (pkg) {
+    const card = document.createElement('button');
+    card.className = 'card';
+    const grad = (pkg.cover || ['#222', '#333', '#555']).join(',');
+    card.innerHTML =
+      '<div class="cover" style="background:linear-gradient(135deg,' + grad + ')">' +
+      '<span class="cover-title">' + esc(pkg.title) + '</span>' +
+      '<span class="cover-genre">' + esc(pkg.genre) + '</span></div>' +
+      '<div class="card-body"><strong>' + esc(pkg.title) + '</strong>' +
+      '<p>' + esc(pkg.desc || '') + '</p></div>' +
+      '<div class="card-cta">JUGAR</div>';
+    card.addEventListener('click', function () { boot(pkg); });
+    grid.appendChild(card);
+  });
+  // zona de carga de paquetes del usuario
+  const drop = document.createElement('div');
+  drop.className = 'card user-card';
+  drop.innerHTML = '<div class="cover user-cover"><span class="cover-title">+ Cargar tu NovaPKG</span>' +
+    '<span class="cover-genre">.json / .novapk</span></div>' +
+    '<div class="card-body"><p>Tu paquete corre por el mismo pipeline: command buffer → WebGL2.</p></div>' +
+    '<input type="file" id="filePkg" accept=".json,.novapk,application/json" style="display:none">' +
+    '<div class="card-cta">SELECCIONAR ARCHIVO</div>';
+  drop.addEventListener('click', function () { $('filePkg').click(); });
+  grid.appendChild(drop);
+  $('filePkg').addEventListener('change', function (e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = function () {
+      let obj = null;
+      try { obj = JSON.parse(fr.result); } catch (err) { alert('Archivo no válido: no es JSON'); return; }
+      const built = NG.NGPackage.buildFromUserCode(obj);
+      if (!built.ok) { alert('Paquete rechazado:\n- ' + built.problems.join('\n- ')); return; }
+      boot(built.pkg);
     };
+    fr.readAsText(f);
+  });
+}
 
-    if (this.el.play)   this.el.play.addEventListener("click", () => this.toggle());
-    if (this.el.reset)  this.el.reset.addEventListener("click", () => this.resetCore());
-    if (this.el.step)   this.el.step.addEventListener("click", () => { this.pause(); this.emu?.stepOne(); this.renderOnce(); });
-    if (this.el.frameBtn) this.el.frameBtn.addEventListener("click", () => { this.pause(); this.tickFrame(); this.updateTelemetry(true); });
-    if (this.el.palette) this.el.palette.addEventListener("change", () => this.renderer.setPalette(this.el.palette.value));
-    if (this.el.scan)    this.el.scan.addEventListener("change", () => this.renderer.setScanlines(this.el.scan.checked));
-    if (this.el.ips)     this.el.ips.addEventListener("input", () => { this.ips = +this.el.ips.value; if (this.el.ipsVal) this.el.ipsVal.textContent = this.ips; });
-    if (this.el.turbo)   this.el.turbo.addEventListener("input", () => { this.turbo = +this.el.turbo.value; if (this.el.turboVal) this.el.turboVal.textContent = "x" + this.turbo; });
-
-    // carga de ROM
-    if (this.el.file) this.el.file.addEventListener("change", async (e) => {
-      const f = e.target.files?.[0];
-      if (f) await this.loadFile(f);
-    });
-    if (this.el.drop) {
-      const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-      ["dragenter", "dragover"].forEach((ev) => this.el.drop.addEventListener(ev, (e) => { stop(e); this.el.drop.classList.add("drag"); }));
-      ["dragleave", "drop"].forEach((ev) => this.el.drop.addEventListener(ev, (e) => { stop(e); this.el.drop.classList.remove("drag"); }));
-      this.el.drop.addEventListener("drop", async (e) => {
-        const f = e.dataTransfer?.files?.[0];
-        if (f) await this.loadFile(f);
-      });
-    }
-    if (this.el.catalog) this.el.catalog.addEventListener("click", async (e) => {
-      const btn = e.target.closest("button[data-rom]");
-      if (!btn) return;
-      const entry = NOVA_GAMES.find((r) => r.id === btn.dataset.rom) ?? ROM_CATALOG.find((r) => r.id === btn.dataset.rom);
-      if (entry) await this.loadFromCatalog(entry);
-    });
-
-    // quirks
-    if (this.el.quirks) {
-      this.el.quirks.addEventListener("change", (e) => {
-        const cb = e.target.closest("input[data-quirk]");
-        if (cb && this.emu) this.emu.setQuirk(+cb.dataset.quirk, cb.checked);
-      });
-      const preset = this.el.quirks.querySelector("[data-quirk-preset]");
-      if (preset) preset.addEventListener("change", () => this.applyPreset(preset.value));
-    }
-
-    this.bindKeyboard();
-    this.bindTouch();
-    this.bindFullscreen();
-    this.buzzer = new Buzzer();
-    this.saves = new SaveStates();
-    this.romId = null;
-    // Gamepad API con deadzone radial y transiciones (reemplaza al poller simple)
-    this.padMgr = new GamepadManager((st) => this.applyPadState(st));
-    this.padState = {};
+/* ---------------- HUD genérico ---------------- */
+function renderHud() {
+  const d = vm.hud.data || {};
+  const el = $('hud');
+  if (vm.state !== 'corriendo' && vm.state !== 'pausada') return;
+  let html = '';
+  if (d.big !== undefined) html += '<div class="hud-center"><div class="hud-big">' + esc(d.big) + '</div>' +
+    (d.sub ? '<div class="hud-sub">' + esc(d.sub) + '</div>' : '') + '</div>';
+  if (d.vel !== undefined) html += '<div class="hud-panel hud-tl"><b>' + d.vel + '</b> km/h' +
+    (d.lap !== undefined ? '<br>Vuelta ' + d.lap + '/3' : '') +
+    (d.time !== undefined ? '<br>' + d.time : '') +
+    (d.pos !== undefined ? '<br>P' + d.pos : '') + '</div>';
+  if (d.boost !== undefined && d.vel !== undefined) {
+    html += '<div class="hud-panel hud-br">TURBO<div class="bar"><i style="width:' + d.boost + '%"></i></div>' +
+      (d.drift ? '<em class="flash">¡DERRAPE!</em>' : '') +
+      (d.off ? '<em class="warn">FUERA DE PISTA</em>' : '') + '</div>';
   }
-
-  /** Traduce el estado del mando (standard mapping) a teclas del sistema. */
-  applyPadState(st) {
-    this.padState = st;
-    if (!this.emu) return;
-    const gb = this.emu.sys === "gb";
-    const press = (cond, k) => this.emu.key(k, !!cond);
-    if (gb) {
-      press(st.a, 0); press(st.b, 1); press(st.select, 2); press(st.start, 3);
-      press(st.right, 4); press(st.left, 5); press(st.up, 6); press(st.down, 7);
-    } else {
-      press(st.up, 0x2); press(st.down, 0x8); press(st.left, 0x4); press(st.right, 0x6);
-      press(st.a, 0x5); press(st.b, 0x6); press(st.x, 0x7); press(st.y, 0x8);
-      press(st.start, 0xC); press(st.select, 0xF);
-    }
-    this.setPadIndicator(st);
-  }
-
-  setPadIndicator(st) {
-    const el = this.root.querySelector("[data-pad-indicator]");
-    if (!el) return;
-    const any = Object.keys(st || {}).some((k) => st[k]);
-    el.textContent = any ? "🎮 activo" : "🎮 conectado";
-    el.classList.toggle("on", true);
-  }
-
-  /* ------------------- pantalla completa --------------------------- */
-  bindFullscreen() {
-    const btn = this.root.querySelector("[data-fullscreen]");
-    if (btn) btn.addEventListener("click", () => this.toggleFullscreen());
-    const target = this.el.drop || this.root.querySelector(".screen-frame") || this.root;
-    this.fsMgr = new FullscreenManager(target, () => this.theaterMode());
-    const onChange = () => this.fitFullscreen();
-    document.addEventListener("fullscreenchange", onChange);
-    document.addEventListener("webkitfullscreenchange", onChange);
-    window.addEventListener("resize", onChange);
-  }
-
-  toggleFullscreen() {
-    this.fsMgr?.toggle();
-  }
-
-  fitFullscreen() {
-    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-    const cv = this.renderer.cv;
-    const frame = this.el.drop || cv.parentElement;
-    if (!fsEl) {
-      frame?.classList.remove("theater");
-      cv.style.width = ""; cv.style.height = "";
-      return;
-    }
-    const w = this.emu ? this.emu.fbW() : 64, h = this.emu ? this.emu.fbH() : 32;
-    // escalado entero cuando quepa (píxeles limpios), fraccional si no cabe
-    const s = Math.min(window.innerWidth / w, window.innerHeight / h);
-    const si = Math.max(1, Math.floor(s));
-    const use = si >= 1 && si <= s ? si : s;
-    cv.style.width = Math.floor(w * use) + "px";
-    cv.style.height = Math.floor(h * use) + "px";
-  }
-
-  /** Fallback iOS/Safari sin API: modo teatro (overlay fijo a pantalla llena). */
-  theaterMode() {
-    const frame = this.el.drop || this.root.querySelector(".screen-frame") || this.root;
-    if (frame.classList.contains("theater")) {
-      frame.classList.remove("theater");
-      this.renderer.cv.style.width = ""; this.renderer.cv.style.height = "";
-      this.toast("Modo teatro desactivado", "ok", 2500);
-    } else {
-      frame.classList.add("theater");
-      this.toast("Modo teatro (tu navegador no expone pantalla completa)", "ok", 4000);
+  if (d.shield !== undefined) {
+    html += '<div class="hud-panel hud-tl">ESCUDO<div class="bar sh"><i style="width:' + d.shield + '%"></i></div>' +
+      'CASCO<div class="bar hu"><i style="width:' + d.hull + '%"></i></div></div>';
+    html += '<div class="hud-panel hud-tr">PUNTOS ' + d.score + '<br>OLEADA ' + d.wave +
+      '<br>ENEMIGOS ' + d.enemies + '<br>TURBO<div class="bar"><i style="width:' + d.boost + '%"></i></div></div>';
+    html += '<div class="crosshair"></div>';
+    if (d.radar && d.radar.length) {
+      html += '<div class="radar">' + d.radar.map(function (p) {
+        return '<i style="left:' + (50 + p.x * 46) + '%;top:' + (50 + p.y * 46) + '%"></i>';
+      }).join('') + '</div>';
     }
   }
-
-  /* ------------------------- entrada ------------------------------ */
-  bindKeyboard() {
-    // map: e.code → lista de destinos { k, sys, label } (una tecla puede
-    // enviar varios valores: p. ej. flechas del CHIP-8).
-    const map = {};
-    const add = (code, entry) => { (map[code] ??= []).push(entry); };
-    C8_KEYS.forEach((x) => add(x.code, { k: x.k, sys: "c8", label: x.label }));
-    // Extensiones: flechas → 2/8/4/6 (arriba/abajo/izq/der) y Espacio → 5
-    // (acción). No colisiona con el mapa clásico 1234/QWER/ASDF/ZXCV.
-    add("ArrowUp",    { k: 0x2, sys: "c8", label: "2" });
-    add("ArrowDown",  { k: 0x8, sys: "c8", label: "8" });
-    add("ArrowLeft",  { k: 0x4, sys: "c8", label: "4" });
-    add("ArrowRight", { k: 0x6, sys: "c8", label: "6" });
-    add("Space",      { k: 0x5, sys: "c8", label: "5" });
-    // WASD como direcciones (adicional al mapa clásico: W sigue siendo la
-    // tecla 5 del pad, pero también mueve arriba; A izquierda; D derecha).
-    add("KeyW", { k: 0x2, sys: "c8", label: "2" });
-    add("KeyA", { k: 0x4, sys: "c8", label: "4" });
-    add("KeyD", { k: 0x6, sys: "c8", label: "6" });
-    GB_KEYS.forEach((x) => add(x.code, { k: x.k, sys: "gb", label: x.label }));
-    add("Space", { k: 0, sys: "gb", label: "A" }); // Espacio = A en Game Boy
-    const handle = (down) => (e) => {
-      if (!this.emu) return;
-      // no robar teclas a campos de texto (búsquedas, etc.)
-      if (e.target?.closest?.("input, select, textarea")) return;
-      // tras pulsar un botón (catálogo, play…) el foco queda en él y las
-      // flechas/espacio dejarían de mover: devolvemos el teclado al juego.
-      const btn = e.target?.closest?.("button, a");
-      if (btn && down) btn.blur();
-      // fallback: si el evento viene sin e.code (teclados remotos/raros),
-      // lo reconstruimos desde e.key
-      const list = map[e.code || codeFromKey(e.key)];
-      if (!list) return;
-      let used = false;
-      for (const m of list) {
-        if (m.sys === "gb" && this.emu.sys === "gb") { this.emu.key(m.k, down); used = true; }
-        else if (m.sys === "c8" && this.emu.sys !== "gb") { this.emu.key(m.k, down); used = true; }
-        this.flashKey(m.label, down, m.sys);
-      }
-      if (used) e.preventDefault();
-    };
-    window.addEventListener("keydown", handle(true));
-    window.addEventListener("keyup", handle(false));
+  if (d.gems !== undefined) {
+    html += '<div class="hud-panel hud-tl">GEMAS ' + d.gems + '/' + d.total + '<br>' + d.time + ' s</div>';
+    html += '<div class="hud-panel hud-bc">' + esc(d.tip || '') + '</div>';
   }
+  el.innerHTML = html;
+  const fpsEl = $('fps');
+  if (fpsEl) fpsEl.textContent = vm.fps + ' fps · ' + vm.gpu.backend + ' · ' + vm.gpu.drawCalls + ' draws';
+}
 
-  /* Gamepad USB/Bluetooth vía Gamepad API (mapeo estándar). Se sondea
-   * cada frame y solo se envían transiciones (borde) al núcleo. */
-  pollGamepad() {
-    const st = this.padMgr?.poll();
-    if (st && this.emu) this.buzzer.set(this.emu.sys !== "gb" ? this.emu.w.c8w_st?.() : 0, this.emu.w.c8w_dt?.());
-  }
+/* ---------------- panel de controles del juego ---------------- */
+function buildControls(pkg) {
+  const box = $('controls');
+  box.innerHTML = '<h4>' + esc(pkg.title) + ' — CONTROLES</h4>' + (pkg.controls || []).map(function (c) {
+    return '<div class="ctl"><span class="k">' + esc(c.keys || '') + '</span><span>' + esc(c.label) + '</span>' +
+      '<span class="pad">' + esc(c.pad || '') + '</span></div>';
+  }).join('');
+}
 
-  /* Aviso flotante sobre la pantalla (éxito verde / error rojo). */
-  toast(msg, kind = "ok", ms = 5000) {
-    let t = this.root.querySelector("[data-toast]");
-    if (!t) {
-      t = document.createElement("div");
-      t.setAttribute("data-toast", "");
-      (this.el.drop || this.root).appendChild(t);
-    }
-    t.className = "toast " + kind;
-    t.textContent = msg;
-    t.style.display = "block";
-    clearTimeout(this._toastT);
-    if (ms > 0) this._toastT = setTimeout(() => { t.style.display = "none"; }, ms);
-  }
+/* ---------------- chips de estado ---------------- */
+function refreshChips() {
+  const gp = vm.input.gamepadInfo;
+  $('chipPad').textContent = gp ? 'MANDO: ' + gp.id.slice(0, 34) : 'MANDO: no conectado (teclado activo)';
+  $('chipState').textContent = 'VM: ' + vm.state;
+}
 
-  bindTouch() {
-    const pad = this.root.querySelector("[data-pad]");
-    if (!pad) return;
-    pad.addEventListener("pointerdown", (e) => {
-      const b = e.target.closest("[data-btn]");
-      if (!b || !this.emu) return;
-      e.preventDefault();
-      this.emu.key(+b.dataset.btn, true);
-      b.classList.add("active");
-      this.flashKey(b.dataset.label, true, this.emu.sys === "gb" ? "gb" : "c8");
-    });
-    const up = (e) => {
-      const b = e.target.closest("[data-btn]");
-      if (!b || !this.emu) return;
-      this.emu.key(+b.dataset.btn, false);
-      b.classList.remove("active");
-      this.flashKey(b.dataset.label, false, this.emu.sys === "gb" ? "gb" : "c8");
-    };
-    pad.addEventListener("pointerup", up);
-    pad.addEventListener("pointercancel", up);
-    pad.addEventListener("pointerleave", up);
-  }
+/* ---------------- barra de botones ---------------- */
+$('btnFs').addEventListener('click', goFullscreen);
+function goFullscreen() {
+  const el = $('stage');
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (fn) { try { fn.call(el); } catch (e) { NGLog.push('UI', 'fullscreen falló: ' + e.message); } }
+  else NGLog.push('UI', 'fullscreen no soportado en este navegador');
+  setTimeout(function () { vm.fitCanvas(); }, 120);
+}
+document.addEventListener('fullscreenchange', function () {
+  setTimeout(function () { vm.fitCanvas(); }, 60);
+});
+document.addEventListener('webkitfullscreenchange', function () {
+  setTimeout(function () { vm.fitCanvas(); }, 60);
+});
+window.addEventListener('keydown', function (e) {
+  if (e.code === 'KeyF' && current.pkg && !e.repeat) goFullscreen();
+});
 
-  flashKey(label, down, sys) {
-    const el = this.root.querySelector(`[data-keylabel="${sys}:${label}"]`)
-      ?? this.root.querySelector(`[data-keylabel="${label}"]`);
-    if (el) el.classList.toggle("active", down);
-  }
+$('btnSound').addEventListener('click', function () {
+  const on = vm.audio.ensure();
+  vm.audio.setMuted(vm.audio.muted ? false : true);
+  this.textContent = 'Sonido: ' + (!on ? 'no disponible' : (vm.audio.muted ? 'silenciado' : 'activado'));
+});
+$('btnSave').addEventListener('click', function () {
+  if (vm.saveToSlot()) flashBtn(this, '¡Guardado!');
+});
+$('btnLoad').addEventListener('click', function () {
+  if (vm.loadFromSlot()) flashBtn(this, '¡Cargado!'); else flashBtn(this, 'Sin datos');
+});
+$('btnRewind').addEventListener('mousedown', startRewind);
+$('btnRewind').addEventListener('touchstart', function (e) { e.preventDefault(); startRewind(); }, { passive: false });
+['mouseup', 'mouseleave', 'touchend'].forEach(function (ev) {
+  $('btnRewind').addEventListener(ev, stopRewind);
+});
+function startRewind() {
+  if (rewindHold) return;
+  const btn = $('btnRewind');
+  const step = function () {
+    const n = vm.rewind();
+    btn.textContent = n ? '−' + (n / 60).toFixed(1) + 's' : 'Inicio';
+    rewindHold = setTimeout(step, 90);
+  };
+  step();
+}
+function stopRewind() { if (rewindHold) { clearTimeout(rewindHold); rewindHold = null; $('btnRewind').textContent = 'Rebobinar'; } }
+$('btnReset').addEventListener('click', function () { if (current.pkg) boot(current.pkg); });
+$('btnLog').addEventListener('click', function () {
+  const p = $('serial');
+  p.classList.toggle('open');
+  this.textContent = p.classList.contains('open') ? 'Cerrar registro' : 'Registro serial';
+});
+$('btnExit').addEventListener('click', function () {
+  vm.stopLoop();
+  vm.audio.stopAllLoops(); vm.audio.stopMusic();
+  current.pkg = null;
+  $('overlay').classList.remove('hidden');
+  $('hud').classList.add('hidden');
+  $('bar').classList.add('hidden');
+});
 
-  /* ------------------------- carga ROM ---------------------------- */
-  detectSystem(name) {
-    const n = name.toLowerCase();
-    if (n.endsWith(".gb") || n.endsWith(".gbc")) return "gb";
-    if (n.endsWith(".ch8")) {
-      // S-CHIP: los ROMs del catálogo schip se marcan; los uploads a CHIP-8
-      return null; // decidirá el llamador (catálogo) o default chip8
-    }
-    return "chip8";
-  }
+/* ---------------- calidad ---------------- */
+$('selQuality').addEventListener('change', function () {
+  const v = this.value;
+  if (v === 'auto') { vm.quality.auto = true; vm.quality.resScale = 1; }
+  else vm.setResScale(parseFloat(v));
+  NGLog.push('UI', 'calidad → ' + v);
+});
 
-  async loadFile(f) {
-    const n = f.name.toLowerCase();
-    if (/\.(zip|7z|rar|tar|gz)$/.test(n)) {
-      this.toast(`✗ ${f.name} está comprimido — descomprímelo y arrastra el .ch8 o .gb de dentro`, "err", 9000);
-      return;
-    }
-    if (!n.endsWith(".ch8") && !n.endsWith(".gb") && !n.endsWith(".gbc")) {
-      this.toast(`✗ ${f.name} no es un juego compatible. Solo .ch8 (CHIP-8) y .gb/.gbc (Game Boy). PS5/Xbox no existen como emulador en ningún sitio del mundo`, "err", 11000);
-      return;
-    }
-    const buf = new Uint8Array(await f.arrayBuffer());
-    let sys = this.detectSystem(f.name);
-    if (!sys) sys = this.root.querySelector("[data-sys-select]")?.value || "chip8";
-    if (sys !== "gb") {
-      if (buf.length > 3584) {
-        this.toast(`✗ ${f.name} (${buf.length} B) no cabe en CHIP-8 (máx 3.584 B). Si es de Game Boy, renómbralo a .gb`, "err", 9000);
-        return;
-      }
-      if (buf.length < 4) { this.toast(`✗ ${f.name} está vacío o corrupto`, "err", 8000); return; }
-    } else {
-      // cabecera GB: primeros 8 bytes del logo Nintendo en 0x104 (los ROMs
-      // del banco van recortados, así que solo exigimos la firma inicial)
-      const LOGO = [0xCE,0xED,0x66,0x66,0xCC,0x0D,0x00,0x0B];
-      const okHeader = buf.length > 0x114 && LOGO.every((b, i) => buf[0x104 + i] === b);
-      if (!okHeader) {
-        this.toast(`✗ ${f.name} no tiene cabecera de Game Boy. ¿Será un .ch8?`, "err", 9000);
-        return;
-      }
-    }
-    await this.loadRom(buf, f.name, sys);
-  }
+/* ---------------- panel de error ---------------- */
+function showHalt(e) {
+  const p = $('halt');
+  p.classList.remove('hidden');
+  $('haltMsg').textContent = (e && e.message) ? e.message : String(e);
+  $('haltStack').textContent = (e && e.stack) ? e.stack.split('\n').slice(0, 4).join('\n') : '';
+}
+function hideHalt() { $('halt').classList.add('hidden'); }
+$('btnRetry').addEventListener('click', function () { if (current.pkg) boot(current.pkg); });
+$('btnExitHalt').addEventListener('click', function () { $('btnExit').click(); });
+function flashBtn(b, msg) {
+  const old = b.textContent;
+  b.textContent = msg;
+  setTimeout(function () { b.textContent = old; }, 900);
+}
 
-  async loadFromCatalog(entry) {
-    const res = await fetch(entry.url);
-    if (!res.ok) { this.setStatus(`No se pudo cargar ${entry.url}: ${res.status}`); return; }
-    const buf = new Uint8Array(await res.arrayBuffer());
-    await this.loadRom(buf, entry.name, entry.system);
-    this.romNote = entry.note ?? "";
-    this.goldenArmed = entry.golden ?? null;
-    this.goldenOk = false;
-    this.updateGolden();
-    if (!this.compact && this.el.romNote) this.el.romNote.textContent = entry.note ?? "";
-  }
-
-  async loadRom(bytes, name, sys, cfg = null) {
-    if (!this.emu) await this.bootDelay();
-    this.pause();
-    this.emu.romBytes = null; // evita recarga implícita en init()
-    this.emu.init(sys);
-    // configuración por juego (biblioteca NOVA): ips y quirks explícitos
-    if (cfg) {
-      if (cfg.ips && sys !== "gb") this.ips = cfg.ips;
-      if (cfg.quirks && sys !== "gb" && this.emu.w.c8w_set_quirk) {
-        cfg.quirks.forEach((v, i) => this.emu.setQuirk(i, !!v));
-        const presetSel = this.root.querySelector("[data-quirk-preset]");
-        if (presetSel) presetSel.value = "custom";
-      }
-      this.romId = cfg.id;
-    } else {
-      this.romId = null;
-    }
-    const ok = this.emu.loadRom(bytes);
-    if (!ok) { this.setStatus(`ROM inválida para ${sys}: ${name}`); return; }
-    this.romName = name;
-    this.frames = 0;
-    this.goldenOk = false;
-    this.goldenArmed = null;
-    this.renderer.clear();
-    this.setSysBadge(sys);
-    if (this.el.romName) this.el.romName.textContent = name;
-    if (this.el.quirks) this.el.quirks.style.display = sys === "gb" ? "none" : "";
-    if (this.el.ipsWrap) this.el.ipsWrap.style.display = sys === "gb" ? "none" : "";
-    this.showSystem(sys);
-    const sysName = sys === "gb" ? "GAME BOY" : sys === "schip" ? "S-CHIP" : "CHIP-8";
-    this.setStatus(`ROM cargada: ${name} (${bytes.length} bytes, ${sysName})`);
-    this.toast(`✓ ${name} — ${sysName} · juega con Flechas / WASD / Espacio (o gamepad)`, "ok", 5000);
-    this.play();
-  }
-
-  async bootDelay() { this.emu = await NovaEmu.load(); this.startLoop(); }
-
-  setSysBadge(sys) {
-    if (!this.el.sysBadge) return;
-    const names = { chip8: "CHIP-8", schip: "S-CHIP", gb: "GAME BOY" };
-    this.el.sysBadge.textContent = names[sys] ?? sys;
-  }
-
-  /** Muestra/oculta teclado 4x4 vs pad GB. */
-  showSystem(sys) {
-    const c8pad = this.root.querySelector("[data-c8pad]");
-    const gbpad = this.root.querySelector("[data-gbpad]");
-    if (c8pad) c8pad.style.display = sys === "gb" ? "none" : "";
-    if (gbpad) gbpad.style.display = sys === "gb" ? "" : "none";
-  }
-
-  /* ------------------------- presets quirks ------------------------ */
-  applyPreset(p) {
-    if (!this.emu) return;
-    const vip =    [1, 1, 0, 1, 1, 0, 0];
-    const schip =  [0, 0, 1, 0, 0, 0, 0];
-    const vals = p === "schip" ? schip : vip;
-    vals.forEach((v, i) => {
-      this.emu.setQuirk(i, !!v);
-      const cb = this.el.quirks.querySelector(`input[data-quirk="${i}"]`);
-      if (cb) cb.checked = !!v;
-    });
-    this.resetCore();
-  }
-
-  /* ------------------------- transporte --------------------------- */
-  toggle() { this.playing ? this.pause() : this.play(); }
-  play()  { this.playing = true;  if (this.el.play)  this.el.play.textContent  = "⏸ Pausa"; }
-  pause() { this.playing = false; if (this.el.play)  this.el.play.textContent  = "▶ Play"; }
-  resetCore() {
-    if (!this.emu) return;
-    const sys = this.emu.sys;
-    this.emu.init(sys);
-    this.frames = 0;
-    this.goldenOk = false;
-    this.updateGolden();
-    this.renderer.clear();
-  }
-
-  startLoop() {
-    if (this._raf) return;
-    this._lastT = performance.now();
-    const loop = (t) => {
-      this._raf = requestAnimationFrame(loop);
-      const dt = t - this._lastT;
-      this._lastT = t;
-      if (this.emu) this.pollGamepad();
-      if (this.playing && this.emu) {
-        // objetivo 60 fps con acumulador (mismo pacer que el CLI: deadline absoluto)
-        this._acc += dt;
-        const stepMs = 1000 / 60;
-        let n = 0;
-        while (this._acc >= stepMs && n < 4) {
-          this.tickFrame();
-          this._acc -= stepMs;
-          n++;
-        }
-        if (this._acc > 200) this._acc = 0; // anti catch-up tras pestaña oculta
-        this.updateTelemetry();
-      }
-      // FPS
-      this._fpsN++;
-      if (t - this._fpsT >= 1000) {
-        this.fps = this._fpsN * 1000 / (t - this._fpsT);
-        this._fpsT = t; this._fpsN = 0;
-        if (this.el.fps) this.el.fps.textContent = this.fps.toFixed(0);
-      }
-    };
-    this._raf = requestAnimationFrame(loop);
-  }
-
-  tickFrame() {
-    if (!this.emu) return;
-    if (this.emu.sys === "gb") {
-      for (let i = 0; i < this.turbo; i++) this.emu.frame();
-    } else {
-      this.emu.frame(this.ips);
-    }
-    this.frames++;
-    if (this._onFrame) this._onFrame();
-    if (this.emu.sys === "gb" || !this.emu.exited()) {
-      this.renderer.draw(this.emu.fb(), this.emu.fbW(), this.emu.fbH());
-    }
-    // buzzer CHIP-8: el timer de sonido manda (si el wasm lo expone)
-    if (this.emu.sys !== "gb" && this.emu.w.c8w_st) {
-      this.buzzer.set(this.emu.w.c8w_st(), this.emu.w.c8w_dt());
-    }
-    if (this.goldenArmed && !this.goldenOk && this.frames === this.goldenArmed.frames) {
-      if (this.emu.hashHex() === this.goldenArmed.hash) {
-        this.goldenOk = true;
-        this.updateGolden();
-      }
+/* ---------------- controles táctiles ---------------- */
+function setupTouch(pkg) {
+  const t = $('touch');
+  if (!('ontouchstart' in window)) { t.classList.add('hidden'); return; }
+  t.classList.remove('hidden');
+  const stick = $('stick'), knob = $('knob');
+  let sid = null, origin = null;
+  const touchState = { move: { x: 0, y: 0 }, look: { x: 0, y: 0 }, btn: {} };
+  function stickMove(e) {
+    for (const tc of e.touches) {
+      if (tc.identifier !== sid) continue;
+      const dx = (tc.clientX - origin.x) / 48, dy = (tc.clientY - origin.y) / 48;
+      const l = Math.hypot(dx, dy) || 1, cl = Math.min(1, l);
+      touchState.move.x = dx / l * cl;
+      touchState.move.y = dy / l * cl;
+      knob.style.transform = 'translate(' + (dx / l * cl * 34) + 'px,' + (dy / l * cl * 34) + 'px)';
     }
   }
+  stick.addEventListener('touchstart', function (e) {
+    const tc = e.changedTouches[0];
+    sid = tc.identifier;
+    const r = stick.getBoundingClientRect();
+    origin = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    e.preventDefault();
+  }, { passive: false });
+  stick.addEventListener('touchmove', stickMove, { passive: false });
+  stick.addEventListener('touchend', function () {
+    sid = null; touchState.move.x = 0; touchState.move.y = 0;
+    knob.style.transform = 'translate(0,0)';
+  });
+  document.querySelectorAll('.tbtn').forEach(function (b) {
+    const act = b.getAttribute('data-act');
+    b.addEventListener('touchstart', function (e) { e.preventDefault(); touchState.btn[act] = 1; b.classList.add('on'); }, { passive: false });
+    b.addEventListener('touchend', function () { touchState.btn[act] = 0; b.classList.remove('on'); });
+  });
+  vm.input.setTouch(touchState);
+}
 
-  renderOnce() {
-    if (!this.emu) return;
-    this.renderer.draw(this.emu.fb(), this.emu.fbW(), this.emu.fbH());
-  }
+/* ---------------- utilidades ---------------- */
+function esc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+window.__renderHud = renderHud;
+setInterval(function () {
+  renderHud();
+  const pre = $('serialBody');
+  if (pre && $('serial').classList.contains('open')) pre.textContent = NGLog.dump();
+  refreshChips();
+}, 120);
 
-  updateGolden() {
-    if (!this.el.golden) return;
-    if (!this.goldenArmed) { this.el.golden.textContent = ""; return; }
-    this.el.golden.textContent = this.goldenOk
-      ? "GOLDEN OK (frame " + this.goldenArmed.frames + ")"
-      : `esperando frame ${this.goldenArmed.frames}…`;
-    this.el.golden.classList.toggle("ok", this.goldenOk);
-  }
-
-  updateTelemetry(force = false) {
-    if (!this.emu) return;
-    if (this.el.frames) this.el.frames.textContent = this.frames;
-    if (this.el.hash)   this.el.hash.textContent = this.emu.hashHex();
-    if (this.el.ops) {
-      this.el.ops.textContent = this.emu.sys === "gb"
-        ? (this.emu.cycles() / 1e6).toFixed(1) + "M ciclos"
-        : (this.emu.opCount() / 1e6).toFixed(2) + "M ops";
-    }
-    if (this.el.serial && this.emu.sys === "gb") {
-      const s = this.emu.serial();
-      if (s) this.el.serial.textContent = s;
-    }
-  }
-
-  setStatus(s) { if (this.el.status) this.el.status.textContent = s; }
-
-  /* ---------------- save states (wasm NCS1) ------------------------ */
-  saveState(slot) {
-    if (!this.emu || this.emu.sys === "gb" || !this.emu.w.c8w_snap) {
-      this.toast("✗ Guardado no disponible aquí (solo CHIP-8 en este build)", "err", 5000);
-      return;
-    }
-    const size = this.emu.w.c8w_snap_size();
-    const ptr = this.emu.w.nova_alloc(size);
-    const written = this.emu.w.c8w_snap(ptr);
-    const bytes = new Uint8Array(this.emu.w.memory.buffer.slice(ptr, ptr + written));
-    const id = this.romId ?? this.romName;
-    const ok = this.saves.save(slot, id, this.emu.sys, bytes);
-    this.toast(ok ? `✓ Partida guardada en ranura ${slot + 1}` : "✗ Sin espacio para guardar", ok ? "ok" : "err", 4000);
-    this.refreshSlots();
-  }
-
-  loadState(slot) {
-    if (!this.emu || !this.emu.w.c8w_restore) return;
-    const id = this.romId ?? this.romName;
-    const p = this.saves.load(slot, id);
-    if (!p) {
-      this.toast(`✗ Ranura ${slot + 1} vacía o de otro juego`, "err", 4000);
-      return;
-    }
-    const ptr = this.emu.w.nova_alloc(p.bytes.length);
-    this.u8set(p.bytes, ptr);
-    const rc = this.emu.w.c8w_restore(ptr);
-    if (rc === 0) {
-      this.renderer.draw(this.emu.fb(), this.emu.fbW(), this.emu.fbH());
-      this.toast(`✓ Partida cargada de la ranura ${slot + 1}`, "ok", 4000);
-      this.play();
-    } else {
-      this.toast("✗ Snapshot incompatible", "err", 4000);
-    }
-  }
-
-  u8set(arr, ptr) {
-    const u8 = new Uint8Array(this.emu.w.memory.buffer);
-    for (let i = 0; i < arr.length; i++) u8[ptr + i] = arr[i];
-  }
-
-  refreshSlots() {
-    const wrap = this.root.querySelector("[data-slots]");
-    if (!wrap) return;
-    wrap.innerHTML = "";
-    for (let i = 0; i < 2; i++) {
-      const info = this.saves.peek(i);
-      const b = document.createElement("button");
-      b.className = "slotbtn";
-      const when = info ? new Date(info.when).toLocaleString() : "vacía";
-      b.innerHTML = `<b>Ranura ${i + 1}</b><span>${info ? info.romId + " · " + when : "vacía"}</span>`;
-      b.title = "Clic: cargar · Mayús+clic: guardar";
-      b.addEventListener("click", (e) => {
-        this.buzzer.unlock();
-        if (e.shiftKey) this.saveState(i); else this.loadState(i);
-      });
-      wrap.appendChild(b);
-    }
-  }
-
-  /** Carga un juego de la biblioteca NOVA por id (una sola carga, con cfg). */
-  async loadNovaGame(id) {
-    const entry = NOVA_GAMES.find((g) => g.id === id) ?? ROM_CATALOG.find((r) => r.id === id);
-    if (!entry) return false;
-    this.buzzer.unlock(); // gesto de usuario: desbloquea audio
-    const res = await fetch(entry.url);
-    if (!res.ok) { this.setStatus(`No se pudo cargar ${entry.url}: ${res.status}`); return false; }
-    const buf = new Uint8Array(await res.arrayBuffer());
-    await this.loadRom(buf, entry.name, entry.system,
-      { id: entry.id, ips: entry.ips, quirks: entry.quirks });
-    this.goldenArmed = entry.golden ?? null;
-    this.goldenOk = false;
-    this.updateGolden();
-    if (!this.compact && this.el.romNote) this.el.romNote.textContent = entry.note ?? "";
-    this.romNote = entry.note ?? "";
-    this.refreshSlots();
-    return true;
+/* ---------------- arranque de página ---------------- */
+buildLibrary();
+vm.fitCanvas();
+window.addEventListener('resize', function () { vm.fitCanvas(); });
+// ?game=id resalta la tarjeta (el usuario pulsa para iniciar: gesto necesario para audio)
+const q = new URLSearchParams(location.search).get('game');
+if (q) {
+  const pkg = NG.NGPackage.get(q);
+  if (pkg) {
+    const cards = document.querySelectorAll('.card');
+    // la biblioteca se ordena igual que NGPackage.list()
+    const idx = NG.NGPackage.list().indexOf(pkg);
+    if (cards[idx]) cards[idx].classList.add('featured');
+    NGLog.push('UI', 'juego solicitado por URL: ' + q);
   }
 }
+})();

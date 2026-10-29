@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NovaEmu NG — Consola</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body class="console-page">
+<header class="top">
+  <a class="logo" href="index.html">NOVA<span>EMU</span> <em>NG</em></a>
+  <nav>
+    <a href="index.html">Inicio</a>
+    <a href="console.html" class="active">Consola</a>
+    <a href="tests.html">Banco de pruebas</a>
+    <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main class="stage-outer">
+  <div id="stage" class="stage">
+    <canvas id="screen" width="960" height="540"></canvas>
+
+    <div id="hud" class="hud hidden"></div>
+
+    <div class="idle-badge">NovaEmu NG · nueva generación</div>
+
+    <div id="overlay" class="overlay">
+      <h2>BIBLIOTECA</h2>
+      <p class="ov-sub">Elige un título — arranca al instante, sin descargas</p>
+      <div id="cards" class="cards"></div>
+    </div>
+
+    <div id="halt" class="halt hidden">
+      <h3>La VM se recuperó de un fallo</h3>
+      <p id="haltMsg"></p>
+      <pre id="haltStack"></pre>
+      <div class="halt-btns">
+        <button id="btnRetry">Reintentar</button>
+        <button id="btnExitHalt">Volver a la biblioteca</button>
+      </div>
+    </div>
+
+    <div id="touch" class="touch hidden">
+      <div id="stick" class="stick"><div id="knob" class="knob"></div></div>
+      <div class="tbtns">
+        <button class="tbtn" data-act="a">A</button>
+        <button class="tbtn" data-act="b">B</button>
+        <button class="tbtn" data-act="up">▲</button>
+        <button class="tbtn" data-act="start">START</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="bar" class="bar hidden">
+  <button id="btnFs">Pantalla completa (F)</button>
+  <button id="btnSound">Sonido</button>
+  <button id="btnSave">Guardar</button>
+  <button id="btnLoad">Cargar</button>
+  <button id="btnRewind">Rebobinar (mantén)</button>
+  <button id="btnReset">Reiniciar</button>
+  <select id="selQuality" title="Calidad gráfica">
+    <option value="auto">Calidad: Auto</option>
+    <option value="1">Alta</option>
+    <option value="0.75">Media</option>
+    <option value="0.5">Baja (PC antigua)</option>
+  </select>
+  <button id="btnLog">Registro serial</button>
+  <button id="btnExit">Salir</button>
+  <span class="chips">
+    <span id="chipPad" class="chip">MANDO: no conectado</span>
+    <span id="chipState" class="chip">VM: apagada</span>
+    <span id="fps" class="chip">— fps</span>
+  </span>
+</div>
+
+<section id="controls" class="controls"></section>
+
+<pre id="serial" class="serial"><div class="serial-h">REGISTRO SERIAL (subsistemas LOADER · SYSMOD · GPU · PAD · AUDIO · VM · SAVE)</div><div id="serialBody"></div></pre>
+
+<footer class="foot">
+  <span>NovaEmu NG — pipeline de nueva generación en tu navegador</span>
+  <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">github.com/eddyflores100-lang/novaemu</a>
+</footer>
+
+<script src="assets/site.js"></script>
+<script src="assets/ng-core.js"></script>
+<script src="assets/ng-system.js"></script>
+<script src="assets/game-turbo.js"></script>
+<script src="assets/game-star.js"></script>
+<script src="assets/game-ruins.js"></script>
+<script src="assets/console.js"></script>
+</body>
+</html>

@@ -1,7 +1,9 @@
-/* Config del sitio — EDITA SOLO ESTA LÍNEA tras crear tu repo:
- * GitHub Pages: Settings → Pages → Source: "Deploy from a branch" → main → /docs */
-export const GITHUB_REPO = "https://github.com/eddyflores100-lang/novaemu";
-
-document.querySelectorAll("a[data-gh]").forEach((a) => {
-  a.href = GITHUB_REPO;
-});
+/* Config del sitio NovaEmu NG — script clásico (sin módulos ES) */
+(function () {
+  'use strict';
+  var GITHUB_REPO = "https://github.com/eddyflores100-lang/novaemu";
+  window.NG_GITHUB_REPO = GITHUB_REPO;
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll("a[data-gh]").forEach(function (a) { a.setAttribute('href', GITHUB_REPO); });
+  });
+})();
