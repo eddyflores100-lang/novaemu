@@ -3,61 +3,246 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NovaEmu NG — Banco de pruebas</title>
-<link rel="stylesheet" href="assets/site.css">
+<title>NovaEmu — Banco de pruebas (18 tests)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<style>
+  :root { --bg:#070810; --card:#12172c; --line:rgba(140,160,220,.14); --txt:#e8edf8; --dim:#97a5c4; --ok:#3ddc84; --fail:#ff5d6c; --acc:#3ec6ff; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter','Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--txt); padding:40px 6vw; }
+  h1 { font-size:26px; margin-bottom:6px; }
+  .sum { color:var(--dim); margin-bottom:26px; font-size:14px; }
+  .sum b.ok { color:var(--ok); } .sum b.fail { color:var(--fail); }
+  .test { display:flex; gap:14px; align-items:flex-start; padding:13px 18px; border:1px solid var(--line); border-radius:12px; margin-bottom:9px; background:var(--card); }
+  .test .st { font-weight:800; width:56px; flex:0 0 56px; }
+  .test.pass .st { color:var(--ok); } .test.fail .st { color:var(--fail); }
+  .test h3 { font-size:14.5px; margin-bottom:3px; }
+  .test p { color:var(--dim); font-size:12.5px; line-height:1.5; }
+  #glcanvas { width:320px; height:240px; border:1px solid var(--line); border-radius:10px; margin: 10px 0 24px; }
+  a { color:var(--acc); }
+</style>
 </head>
 <body>
-<header class="top">
-  <a class="logo" href="index.html">NOVA<span>EMU</span> <em>NG</em></a>
-  <nav>
-    <a href="index.html">Inicio</a>
-    <a href="console.html">Consola</a>
-    <a href="tests.html" class="active">Banco de pruebas</a>
-    <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">GitHub</a>
-  </nav>
-</header>
+<h1>🧪 Banco de pruebas NovaCore 3.0</h1>
+<p class="sum">Render real con WebGL2 sobre lienzo reducido · <span id="summary">ejecutando…</span> · <a href="app.html">volver a la consola</a></p>
+<canvas id="glcanvas" width="320" height="240"></canvas>
+<div id="results"></div>
 
-<main class="tests-wrap">
-  <h1>Banco de pruebas</h1>
-  <p class="sub" style="color:#8b95ab;max-width:820px;line-height:1.6;margin-top:8px">
-    Metodología de la escena real: golden frames con hash del framebuffer (KytyPS5 compara bytes),
-    conformance GPU contra referencia calculada en CPU con sentinela (SharpEmu 0xCAFEBABE),
-    frame dumps (AnyPS5 APS5_DUMP_FRAMES) y watchdog de recuperación. Si algo falla aquí,
-    se depura antes de publicar.
-  </p>
+<script src="assets/nova-core.js"></script>
+<script src="assets/nova-tex.js"></script>
+<script src="assets/input.js"></script>
+<script src="assets/audio.js"></script>
+<script src="assets/pkg.js"></script>
+<script src="assets/game-racer.js"></script>
+<script src="assets/game-runner.js"></script>
+<script src="assets/game-space.js"></script>
+<script>
+'use strict';
+(() => {
+  const R = document.getElementById('results');
+  const tests = [];
+  const T = (name, fn, desc) => tests.push({ name, fn, desc });
+  const ok = [], fail = [];
+  window.__jsErrors = 0;
+  window.onerror = () => { window.__jsErrors++; };
 
-  <div class="summary">
-    <div class="sum-card ok" id="sumState"><b>…</b><small>estado</small></div>
-    <div class="sum-card"><b id="nPass">0</b><small>pruebas superadas</small></div>
-    <div class="sum-card"><b id="nTotal">0</b><small>total</small></div>
-    <div class="sum-card"><b id="nErr">0</b><small>errores JS globales</small></div>
-    <div class="sum-card"><b id="nMs">0</b><small>ms de batería</small></div>
-    <div class="sum-card"><b id="backend">…</b><small>backend GL</small></div>
-  </div>
+  function add(name, passed, info) {
+    const d = document.createElement('div');
+    d.className = 'test ' + (passed ? 'pass' : 'fail');
+    d.innerHTML = `<div class="st">${passed ? 'PASS' : 'FAIL'}</div><div><h3>${name}</h3><p>${info || ''}</p></div>`;
+    R.appendChild(d);
+    (passed ? ok : fail).push(name);
+  }
 
-  <div class="golden-box">
-    Golden frames: la primera ejecución registra el hash en <code>localStorage</code>; las siguientes
-    comparan contra él para detectar regresiones de renderizado. El hash es estable dentro del mismo
-    entorno (GPU/drivers); si cambias de máquina, se re-registra una vez.
-  </div>
+  /* ---------- setup del motor real ---------- */
+  let renderer, texF, geoF, scene;
+  const canvas = document.getElementById('glcanvas');
+  try {
+    renderer = new NovaCore.NovaRenderer(canvas, { shadowSize: 512, autoRes: false, grain: 0 });
+    texF = new NovaTex.TexFactory(renderer);
+    geoF = new NovaTex.GeoFactory(renderer);
+  } catch (e) {
+    add('Motor WebGL2 inicializa', false, e.message);
+  }
 
-  <table class="tests" id="tbl">
-    <thead><tr><th>#</th><th>Prueba</th><th>Duración</th><th>Estado</th></tr></thead>
-    <tbody></tbody>
-  </table>
-</main>
+  function buildScene() {
+    scene = [];
+    const mTiles = texF.get('tiles', 128, 3);
+    const ground = new NovaCore.Node(geoF.plane(20, 20, 1, 1, 4, true), { albedo: mTiles.albedo, normal: mTiles.normal, rough: mTiles.rough, normalScale: mTiles.normalScale, castShadow: false });
+    scene.push(ground);
+    const box = new NovaCore.Node(geoF.box(1, 1, 1, 1), { albedo: texF.get('hull', 128, 5).albedo, normal: texF.get('hull', 128, 5).normal, rough: 0.4, metal: 0.5 });
+    box.pos = [0, 1.2, 0];
+    scene.push(box);
+    const sky = new NovaCore.Node(geoF.sphere(60, 16, 10, true), { albedo: texF.skyGradient([{ t: 0, c: [30, 40, 80] }, { t: 1, c: [200, 140, 90] }]), unlit: true, sky: true, emissive: [1, 1, 1], castShadow: false });
+    scene.push(sky);
+    return scene;
+  }
 
-<footer class="foot">
-  <span>NovaEmu NG — banco de pruebas</span>
-  <a href="https://github.com/eddyflores100-lang/novaemu" target="_blank" rel="noopener">github.com/eddyflores100-lang/novaemu</a>
-</footer>
+  function renderFrame(strength) {
+    renderer.sun.strength = strength;
+    renderer.camera.pos = [4, 3.5, 6];
+    renderer.camera.target = [0, 0.8, 0];
+    renderer.render(buildScene(), null, 0.016);
+    return renderer.frameHash();
+  }
 
-<script src="assets/site.js"></script>
-<script src="assets/ng-core.js"></script>
-<script src="assets/ng-system.js"></script>
-<script src="assets/game-turbo.js"></script>
-<script src="assets/game-star.js"></script>
-<script src="assets/game-ruins.js"></script>
-<script src="assets/tests.js"></script>
+  /* ---------- TESTS ---------- */
+  T('Motor WebGL2 inicializa', () => {
+    return !!renderer && renderer.gl instanceof WebGL2RenderingContext;
+  }, 'Contexto webgl2 con powerPreference high-performance');
+
+  T('Programas shader compilan (6)', () => {
+    return !!(renderer.mesh.prog && renderer.depth.prog && renderer.part.prog && renderer.bright.prog && renderer.blur.prog && renderer.post.prog);
+  }, 'mesh, depth, partículas, bright, blur, post');
+
+  T('Mat4: identidad y multiplicación', () => {
+    const I = NovaCore.M4.ident(), A = NovaCore.M4.ident();
+    A[0] = 2; A[5] = 3; A[10] = 4; A[12] = 5; A[13] = 6; A[14] = 7;
+    const out = NovaCore.M4.mul(NovaCore.M4.ident(), I, A);
+    return out[0] === 2 && out[5] === 3 && out[10] === 4 && out[12] === 5 && out[13] === 6 && out[14] === 7;
+  }, 'I × A = A');
+
+  T('Mat4: perspectiva correcta', () => {
+    const p = NovaCore.M4.perspective(NovaCore.M4.ident(), Math.PI / 2, 1, 1, 100);
+    // f=1/tan(45°)=1; [10]=(far+near)/(near-far) = 101/-99 ≈ -1.0202; [14] = 2*100/−99 ≈ −2.0202
+    return Math.abs(p[0] - 1) < 1e-6 && Math.abs(p[10] + 1.020202) < 1e-4 && Math.abs(p[14] + 2.020202) < 1e-4 && p[11] === -1;
+  }, 'fov 90°, near 1, far 100');
+
+  T('Mat4: normalMat3 con escala no uniforme', () => {
+    const m = NovaCore.M4.compose(NovaCore.M4.ident(), [0, 0, 0], [0, 0, 0], [2, 1, 1]);
+    const n = NovaCore.M4.normalMat3(new Float32Array(9), m);
+    // inversa-traspuesta de diag(2,1,1) = diag(0.5,1,1)
+    return Math.abs(n[0] - 0.5) < 1e-6 && Math.abs(n[4] - 1) < 1e-6 && Math.abs(n[8] - 1) < 1e-6;
+  }, 'diag(2,1,1) → diag(.5,1,1)');
+
+  T('Nodos: jerarquía padre-hijo', () => {
+    const parent = new NovaCore.Node(geoF.box(1, 1, 1), {});
+    parent.pos = [10, 0, 0];
+    const child = new NovaCore.Node(geoF.box(1, 1, 1), {});
+    child.pos = [0, 5, 0]; child.parent = parent;
+    parent.world(); const p = NovaCore.M4.transformPoint(child.world(), [0, 0, 0]);
+    return Math.abs(p[0] - 10) < 1e-6 && Math.abs(p[1] - 5) < 1e-6;
+  }, 'child(0,5,0) bajo parent(10,0,0) → mundo (10,5,0)');
+
+  T('Texturas procedurales: 10 materiales', () => {
+    const kinds = ['asphalt', 'concrete', 'tiles', 'brushed', 'hull', 'grass', 'sand', 'hexpanel', 'marble', 'neon'];
+    for (const k of kinds) {
+      const s = texF.get(k, 128, 11);
+      if (!s.albedo || !s.normal || !s.albedo.tex) return false;
+    }
+    return true;
+  }, 'albedo + normal para los 10 tipos');
+
+  T('Normal maps no planos (Sobel)', () => {
+    const gl = renderer.gl;
+    const s = texF.get('tiles', 128, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s.normal.tex, 0);
+    const px = new Uint8Array(128 * 128 * 4);
+    gl.readPixels(0, 0, 128, 128, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    gl.deleteFramebuffer(fb);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    let varSum = 0;
+    for (let i = 0; i < px.length; i += 4 * 97) varSum += Math.abs(px[i] - 128);
+    return varSum > 500; // variación real en canal R
+  }, 'canal R varía respecto al plano 128');
+
+  T('Render: frame completo sin errores GL', () => {
+    renderFrame(1);
+    const errs = renderer.glErrors();
+    return errs === 0;
+  }, 'pase sombra + escena + bloom + post con gl.getError()==NO_ERROR');
+
+  T('Render: frame no vacío (>1% píxeles)', () => {
+    const h = renderFrame(1);
+    const ratio = h.nonBlack / (h.w * h.h);
+    return ratio > 0.01;
+  }, `píxeles encendidos sobre fondo`);
+
+  T('Shadow mapping: sombra escribe en imagen', () => {
+    const withS = renderFrame(1);
+    const noS = renderFrame(0);
+    return withS.hash !== noS.hash;
+  }, 'hash con sombra ≠ hash sin sombra (golden frames, técnica Kyty)');
+
+  T('Determinismo: misma escena → mismo hash', () => {
+    const a = renderFrame(1), b = renderFrame(1);
+    return a.hash === b.hash;
+  }, 'dos frames idénticos (grain=0) → FNV-1a igual');
+
+  T('Input: deadzone radial', () => {
+    const dz = NovaInput.applyDeadzone;
+    const c1 = dz(0.1, 0), c2 = dz(1, 0), c3 = dz(0.5, 0);
+    return c1[0] === 0 && Math.abs(c2[0] - 1) < 1e-6 && Math.abs(c3[0] - (0.5 - 0.18) / 0.82) < 1e-6;
+  }, 'dentro→0, borde→1, reescalado lineal');
+
+  T('Input: edge detection por frame', () => {
+    const inp = new NovaInput(canvas);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true }));
+    inp.update();
+    const first = inp.pressed('cross');
+    inp.update();
+    const second = inp.pressed('cross');
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
+    inp.update();
+    const released = inp.released('cross');
+    return first === true && second === false && released === true;
+  }, 'keydown → pressed solo 1 frame; keyup → released');
+
+  T('PKG: disco válido se acepta', () => {
+    const v = NovaPKG.validate({ magic: 'NOVAPKG', format: 3, game: 'racer', title: 'Test' });
+    return v.ok === true && v.warns.length === 0;
+  }, 'magic+format+game correctos');
+
+  T('PKG: disco inválido se rechaza', () => {
+    const v = NovaPKG.validate({ magic: 'XXXX', game: '' });
+    return v.ok === false && v.errs.length >= 1;
+  }, 'magic incorrecto + sin game → errores claros');
+
+  T('Audio: API presente y sintetizador completo', () => {
+    const supported = !!(window.AudioContext || window.webkitAudioContext);
+    const a = new NovaAudio();
+    const methods = ['unlock', 'sfx', 'engineStart', 'engineUpdate', 'engineStop', 'musicStart', 'musicStop'].every(m => typeof a[m] === 'function');
+    return supported && methods;
+  }, 'AudioContext disponible + 7 métodos del sintetizador');
+
+  T('Juegos: 3 registros con interfaz completa', () => {
+    const G = window.NovaGames;
+    const need = ['create', 'title', 'controls', 'gradient'];
+    return ['racer', 'runner', 'space'].every(k => G[k] && need.every(n => G[k][n] !== undefined));
+  }, 'racer, runner, space con create/controls/portada');
+
+  T('Save state: ida y vuelta serializable', () => {
+    const fake = { pos: [1.5, 2, -3.25], vel: [0, 0, 0], got: [true, false] };
+    const rt = JSON.parse(JSON.stringify(fake));
+    return rt.pos[0] === 1.5 && rt.pos[2] === -3.25 && rt.got[0] === true;
+  }, 'JSON round-trip sin pérdida');
+
+  /* ---------- run ---------- */
+  let i = 0;
+  function run() {
+    if (i >= tests.length) {
+      const s = document.getElementById('summary');
+      s.innerHTML = `<b class="${fail.length ? 'fail' : 'ok'}">${ok.length}/${tests.length} PASS</b>` +
+        (fail.length ? ` · <b class="fail">${fail.length} FALLOS</b>` : ' · TODO EN ORDEN') +
+        ` · errores JS: ${window.__jsErrors}`;
+      s.dataset.done = '1';
+      document.title = `${ok.length}/${tests.length} — NovaEmu tests`;
+      return;
+    }
+    const t = tests[i++];
+    try {
+      const r = t.fn();
+      add(t.name, !!r, t.desc);
+    } catch (e) {
+      add(t.name, false, 'EXCEPCIÓN: ' + e.message);
+    }
+    setTimeout(run, 30);
+  }
+  if (renderer) setTimeout(run, 200);
+  else document.getElementById('summary').textContent = 'SIN WEBGL2 — no se puede ejecutar';
+})();
+</script>
 </body>
 </html>

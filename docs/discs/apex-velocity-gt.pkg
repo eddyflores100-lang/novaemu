@@ -1,0 +1,12 @@
+{
+  "magic": "NOVAPKG",
+  "format": 3,
+  "game": "racer",
+  "title": "APEX VELOCITY — Disco GT",
+  "config": {
+    "laps": 3,
+    "traffic": true
+  },
+  "created": "2026-11-03",
+  "engine": "NovaCore 3.0"
+}

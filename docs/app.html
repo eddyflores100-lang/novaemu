@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>NovaEmu PS5 Edition — Consola</title>
+<meta name="description" content="Emulador-experiencia PS5 en el navegador: 3 juegos 3D con sombras dinámicas, texturas procedurales y controles de baja latencia.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<link rel="stylesheet" href="site.css">
+</head>
+<body class="app-body">
+  <!-- fondo animado del home -->
+  <canvas id="nv-bg"></canvas>
+
+  <!-- lienzo del juego (WebGL2) -->
+  <canvas id="nv-canvas"></canvas>
+
+  <!-- HUD del juego -->
+  <div id="nv-hud" class="hidden"></div>
+
+  <!-- FPS -->
+  <div id="nv-fps"></div>
+
+  <!-- indicador rewind -->
+  <div id="nv-rewind">◄◄ REWIND (ESC+R1)</div>
+
+  <!-- toast -->
+  <div id="nv-toast"></div>
+
+  <!-- boot -->
+  <div id="nv-boot">
+    <div class="boot-logo">
+      <div class="boot-sym">◢◤</div>
+      <div class="boot-name">NovaEmu</div>
+      <div class="boot-sub">PS5 EDITION</div>
+      <div class="boot-bar"><i></i></div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div id="nv-home">
+    <header class="nv-top">
+      <div class="nv-user">
+        <div class="nv-avatar">E</div>
+        <span>eddyflores100</span>
+      </div>
+      <nav class="nv-funcs">
+        <button id="nv-ctl-btn" class="nv-func" title="Test de mando (□)">🎮<label>Mando</label></button>
+        <button id="nv-disc-btn" class="nv-func" title="Insertar disco .pkg">💿<label>Disco</label></button>
+        <button id="nv-set-btn" class="nv-func" title="Ajustes (△)">⚙️<label>Ajustes</label></button>
+        <button id="nv-fs-btn" class="nv-func" title="Pantalla completa">⛶<label>Full</label></button>
+        <button id="nv-pw-btn" class="nv-func" title="Apagar">⏻<label>Apagar</label></button>
+      </nav>
+    </header>
+
+    <main class="nv-main">
+      <div class="nv-info">
+        <h1 id="nv-title">APEX VELOCITY</h1>
+        <p id="nv-genre">Racing · 1 jugador</p>
+        <div id="nv-controls" class="nv-controls"></div>
+      </div>
+      <div id="nv-row" class="nv-row"></div>
+      <footer class="nv-hints">
+        <span><b>✕</b> Jugar</span>
+        <span><b>△</b> Ajustes</span>
+        <span><b>□</b> Mando</span>
+        <span><b>ESC+R1</b> Rewind</span>
+        <span class="nv-dragtip">Arrastra un .pkg aquí para insertar un disco</span>
+      </footer>
+    </main>
+    <input type="file" id="nv-disc-input" accept=".pkg,.json,application/json" hidden>
+  </div>
+
+  <!-- PAUSA -->
+  <div id="nv-pause" class="hidden">
+    <div class="pause-box">
+      <h2>PAUSA</h2>
+      <button id="nv-pause-resume">▶ Continuar</button>
+      <button id="nv-pause-save">💾 Guardar partida</button>
+      <button id="nv-pause-load">📂 Cargar partida</button>
+      <button id="nv-pause-restart">↻ Reiniciar</button>
+      <button id="nv-pause-set">⚙ Ajustes</button>
+      <button id="nv-pause-quit" class="danger">✕ Salir al inicio</button>
+      <p class="pause-hint">✕ / Enter continúa · ○ / ESC vuelve</p>
+    </div>
+  </div>
+
+  <!-- PANEL: mando -->
+  <div id="panel-ctl" class="nv-panel">
+    <div class="panel-box">
+      <h3>Test de mando <button data-close class="x">✕</button></h3>
+      <canvas id="ctl-canvas" width="460" height="300"></canvas>
+      <p class="panel-note">Mueve sticks y botones: se leen por frame (RAF), latencia mínima. Compatible DualSense/DualShock/Xbox (Gamepad API).</p>
+    </div>
+  </div>
+
+  <!-- PANEL: ajustes -->
+  <div id="panel-set" class="nv-panel">
+    <div class="panel-box">
+      <h3>Ajustes <button data-close class="x">✕</button></h3>
+      <div class="set-row"><label>Volumen</label><input id="set-volume" type="range" min="0" max="1" step="0.05"></div>
+      <div class="set-row"><label>Sombras</label>
+        <select id="set-shadows">
+          <option value="high">Alta (2048px)</option>
+          <option value="med">Media (1024px)</option>
+          <option value="off">Desactivadas</option>
+        </select></div>
+      <div class="set-row"><label>Bloom</label><input id="set-bloom" type="checkbox"></div>
+      <div class="set-row"><label>Resolución</label>
+        <select id="set-res">
+          <option value="auto">Automática (60 fps)</option>
+          <option value="1">100%</option>
+          <option value="0.75">75%</option>
+          <option value="0.6">60%</option>
+        </select></div>
+      <div class="set-row"><label>Contador FPS</label><input id="set-fps" type="checkbox"></div>
+      <p class="panel-note">En PCs viejas el motor baja la resolución sola para mantener 60 fps (resolución dinámica).</p>
+    </div>
+  </div>
+
+  <!-- PANEL: ayuda -->
+  <div id="panel-help" class="nv-panel">
+    <div class="panel-box">
+      <h3>Controles <button data-close class="x">✕</button></h3>
+      <div id="nv-controls-modal"></div>
+    </div>
+  </div>
+
+  <script src="assets/nova-core.js"></script>
+  <script src="assets/nova-tex.js"></script>
+  <script src="assets/input.js"></script>
+  <script src="assets/audio.js"></script>
+  <script src="assets/pkg.js"></script>
+  <script src="assets/game-racer.js"></script>
+  <script src="assets/game-runner.js"></script>
+  <script src="assets/game-space.js"></script>
+  <script src="assets/console.js"></script>
+</body>
+</html>

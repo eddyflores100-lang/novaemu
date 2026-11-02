@@ -1,0 +1,11 @@
+{
+  "magic": "NOVAPKG",
+  "format": 3,
+  "game": "space",
+  "title": "VOID SQUADRON — Nebulosa",
+  "config": {
+    "waves": true
+  },
+  "created": "2026-11-03",
+  "engine": "NovaCore 3.0"
+}

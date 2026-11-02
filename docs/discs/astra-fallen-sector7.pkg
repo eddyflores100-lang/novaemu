@@ -1,0 +1,11 @@
+{
+  "magic": "NOVAPKG",
+  "format": 3,
+  "game": "runner",
+  "title": "ASTRA FALLEN — Sector 7",
+  "config": {
+    "orbs": true
+  },
+  "created": "2026-11-03",
+  "engine": "NovaCore 3.0"
+}
