@@ -551,7 +551,9 @@
       if (S.mode === 'home') { homeNav(); return; }
 
       if (S.mode === 'game' || S.mode === 'pause') {
-        if (S.mode === 'game' && (input.pressed('start') || input.pressed('circle'))) togglePause(true);
+        // ESC+R1 = rewind: no debe abrir la pausa (combinación prioritaria)
+        const rewindCombo = input.held('back') && input.held('r1');
+        if (S.mode === 'game' && !rewindCombo && (input.pressed('start') || input.pressed('circle'))) togglePause(true);
         else if (S.mode === 'pause' && (input.pressed('start') || input.pressed('circle'))) togglePause(false);
         if (S.mode !== 'game') return;
         handleRewind(dt);
