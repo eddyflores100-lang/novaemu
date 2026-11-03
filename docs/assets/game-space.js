@@ -26,13 +26,12 @@
       const mHex = tex.get('hexpanel', 256, 53);
       const mSand = tex.get('sand', 256, 55);
 
-      /* --- niebla espacial profunda --- */
+      /* --- niebla espacial profunda PROCEDURAL (campo estelar denso) --- */
       const sky = new Node(geo.sphere(400, 32, 20, true), {
-        albedo: tex.skyGradient([
-          { t: 0, c: [2, 2, 10] }, { t: 0.5, c: [10, 8, 34] },
-          { t: 0.8, c: [40, 18, 70] }, { t: 1, c: [90, 40, 110] }
-        ]),
-        unlit: true, sky: true, emissive: [1, 1, 1], castShadow: false
+        albedo: tex.solid(255, 255, 255),
+        skyTop: [0.004, 0.005, 0.020], skyHor: [0.045, 0.02, 0.075], skyGnd: [0.010, 0.008, 0.022],
+        clouds: 0.0, stars: 1.0,
+        unlit: true, sky: true, castShadow: false
       });
       this.nodes.push(sky);
 

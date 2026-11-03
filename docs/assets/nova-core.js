@@ -96,13 +96,15 @@ layout(location=1) in vec3 aNor;
 layout(location=2) in vec2 aUV;
 uniform mat4 uProj, uView, uModel, uLightVP;
 uniform mat3 uNormalMat;
+uniform float uNorOffset;
 out vec3 vWorld; out vec3 vNor; out vec2 vUV; out vec4 vShadow;
 void main(){
   vec4 w = uModel * vec4(aPos, 1.0);
   vWorld = w.xyz;
   vNor = uNormalMat * aNor;
   vUV = aUV;
-  vShadow = uLightVP * w;
+  // normal-offset: desplaza la posición de sombra a lo largo de la normal (mata el acne)
+  vShadow = uLightVP * vec4(w.xyz + normalize(vNor) * uNorOffset, 1.0);
   gl_Position = uProj * uView * w;
 }`;
 
@@ -111,9 +113,24 @@ precision highp float;
 in vec3 vWorld; in vec3 vNor; in vec2 vUV; in vec4 vShadow;
 uniform sampler2D uAlbedo, uNormalMap, uShadowMap;
 uniform vec3 uCamPos, uSunDir, uSunColor, uAmbSky, uAmbGround, uEmissive, uFogColor, uTint;
+uniform vec3 uSkyTop, uSkyHor, uSkyGnd;
 uniform float uRough, uMetal, uNormalScale, uFogDensity, uShadowStrength, uAlpha;
+uniform float uCloudAmt, uStarsAmt, uTime;
 uniform int uUnlit, uSky;
 out vec4 fragColor;
+
+/* ruido de valor 2D + FBM para nubes procedurales (técnica iq, reimplementada) */
+float vhash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(vhash(i), vhash(i + vec2(1, 0)), u.x), mix(vhash(i + vec2(0, 1)), vhash(i + vec2(1, 1)), u.x), u.y);
+}
+float fbm(vec2 p){
+  float v = 0.0, a = 0.55;
+  for(int i = 0; i < 5; i++){ v += a * vnoise(p); p = p * 2.03 + vec2(17.3, 9.1); a *= 0.5; }
+  return v;
+}
 
 float calcShadow(){
   vec3 p = vShadow.xyz / vShadow.w * 0.5 + 0.5;
@@ -135,9 +152,30 @@ void main(){
   if(uUnlit == 1){
     vec3 c = base.rgb * uEmissive;
     if(uSky == 1){
+      /* CIELO PROCEDURAL: gradiente atmosférico + sol HDR + nubes FBM + estrellas */
       vec3 dir = normalize(vWorld - uCamPos);
+      float h = clamp(dir.y, -1.0, 1.0);
+      float horiz = pow(1.0 - max(h, 0.0), 3.2);
+      vec3 col = mix(uSkyTop, uSkyHor, horiz);
+      if(h < 0.0) col = mix(uSkyHor, uSkyGnd, clamp(-h * 5.0, 0.0, 1.0));
       float d = max(dot(dir, uSunDir), 0.0);
-      c += uSunColor * (smoothstep(0.9988, 0.9996, d) * 4.0 + pow(d, 40.0) * 0.35 + pow(d, 6.0) * 0.10);
+      col += uSunColor * (smoothstep(0.99930, 0.99985, d) * 9.0 + pow(d, 120.0) * 1.1 + pow(d, 7.0) * 0.30);
+      if(h > 0.015){
+        vec2 cp = dir.xz / (h + 0.14) * 1.35 + vec2(uTime * 0.006, uTime * 0.0023);
+        float f = fbm(cp);
+        float cl = smoothstep(0.46, 0.74, f) * uCloudAmt * smoothstep(0.015, 0.14, h);
+        vec3 cc = col * 0.55 + uSunColor * 0.10 + vec3(0.28, 0.24, 0.26);
+        cc += uSunColor * pow(d, 4.0) * 0.55; // borde iluminado hacia el sol
+        col = mix(col, cc, cl * 0.92);
+      }
+      if(h > 0.22 && uStarsAmt > 0.0){
+        vec2 sp = dir.xz / h * 1.0;
+        float st = step(0.9982, vhash(floor(sp * 190.0)));
+        float tw = 0.6 + 0.4 * vhash(floor(sp * 190.0) + floor(uTime * 0.7));
+        col += vec3(0.9, 0.93, 1.0) * st * tw * smoothstep(0.22, 0.6, h) * uStarsAmt;
+      }
+      fragColor = vec4(col, 1.0);
+      return;
     }
     fragColor = vec4(c, base.a * uAlpha);
     return;
@@ -347,7 +385,7 @@ class NovaRenderer {
     this.opts = opts;
     const gl = canvas.getContext('webgl2', {
       antialias: false, alpha: false, depth: true, stencil: false,
-      powerPreference: 'high-performance', preserveDrawingBuffer: false
+      powerPreference: 'high-performance', preserveDrawingBuffer: !!opts.preserve
     });
     if (!gl) { const e = new Error('WEBGL2_UNAVAILABLE'); e.code = 'WEBGL2_UNAVAILABLE'; throw e; }
     this.gl = gl;
@@ -498,6 +536,7 @@ class NovaRenderer {
 
   resize() {
     const c = this.canvas;
+    if (this.opts.fixedSize) return; // canvas fuera del DOM (portadas): respeta width/height manual
     const dpr = Math.min(window.devicePixelRatio || 1, this.dprCap) * this.resScale;
     const w = Math.max(2, Math.round(c.clientWidth * dpr));
     const h = Math.max(2, Math.round(c.clientHeight * dpr));
@@ -519,7 +558,11 @@ class NovaRenderer {
 
   _lightMatrix() {
     const s = this.sun, r = s.range;
-    const center = this.camera.target;
+    const center = [this.camera.target[0], this.camera.target[1], this.camera.target[2]];
+    // snap al grid de texels del shadow map: elimina el shimmer al mover la cámara
+    const texel = (2 * r) / this.shadowSize;
+    center[0] = Math.round(center[0] / texel) * texel;
+    center[2] = Math.round(center[2] / texel) * texel;
     const dirN = V3.norm(s.dir); // dirN apunta HACIA el suelo; el sol está en el lado opuesto
     const eye = V3.add(center, V3.scale(dirN, -r * 1.6));
     const lightView = M4.lookAt(M4.ident(), eye, center, Math.abs(dirN[1]) > 0.98 ? [0, 0, 1] : [0, 1, 0]);
@@ -586,9 +629,15 @@ class NovaRenderer {
     gl.uniform1i(u.uShadowMap, 2);
     gl.uniform1i(u.uAlbedo, 0);
     gl.uniform1i(u.uNormalMap, 1);
+    gl.uniform1f(u.uNorOffset, 0.05);
+    gl.uniform1f(u.uTime, this.time);
+    gl.uniform3fv(u.uSkyTop, [0.10, 0.14, 0.34]);
+    gl.uniform3fv(u.uSkyHor, [0.86, 0.52, 0.38]);
+    gl.uniform3fv(u.uSkyGnd, [0.22, 0.18, 0.16]);
+    gl.uniform1f(u.uCloudAmt, 0.6);
+    gl.uniform1f(u.uStarsAmt, 0.25);
 
-    for (const n of sceneNodes) {
-      if (!n.visible || !n.geo) continue;
+    const drawNode = (n) => {
       const m = n.mat;
       const wm = n.world();
       M4.normalMat3(n._nm, wm);
@@ -602,12 +651,38 @@ class NovaRenderer {
       gl.uniform1f(u.uMetal, m.metal || 0);
       gl.uniform1f(u.uNormalScale, m.normalScale !== undefined ? m.normalScale : 0.85);
       gl.uniform3fv(u.uEmissive, m.emissive || [0, 0, 0]);
-    gl.uniform3fv(u.uTint, m.tint || [1, 1, 1]);
+      gl.uniform3fv(u.uTint, m.tint || [1, 1, 1]);
       gl.uniform1f(u.uAlpha, m.alpha !== undefined ? m.alpha : 1);
       gl.uniform1i(u.uUnlit, m.unlit ? 1 : 0);
       gl.uniform1i(u.uSky, m.sky ? 1 : 0);
+      if (m.sky) {
+        gl.uniform3fv(u.uSkyTop, m.skyTop || [0.10, 0.14, 0.34]);
+        gl.uniform3fv(u.uSkyHor, m.skyHor || [0.86, 0.52, 0.38]);
+        gl.uniform3fv(u.uSkyGnd, m.skyGnd || [0.22, 0.18, 0.16]);
+        gl.uniform1f(u.uCloudAmt, m.clouds !== undefined ? m.clouds : 0.6);
+        gl.uniform1f(u.uStarsAmt, m.stars !== undefined ? m.stars : 0.25);
+      }
       gl.bindVertexArray(n.geo.vao);
       gl.drawElements(gl.TRIANGLES, n.geo.count, gl.UNSIGNED_SHORT, 0);
+    };
+
+    const blended = [];
+    for (const n of sceneNodes) {
+      if (!n.visible || !n.geo) continue;
+      if (n.mat.blend) { blended.push(n); continue; }
+      drawNode(n);
+    }
+
+    /* --- Pase 2b: decals con blend (sombras de contacto, reflejos suaves) --- */
+    if (blended.length) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      gl.uniform1f(u.uNorOffset, 0.0);
+      for (const n of blended) drawNode(n);
+      gl.uniform1f(u.uNorOffset, 0.05);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
     }
 
     /* --- Partículas (aditivas) --- */

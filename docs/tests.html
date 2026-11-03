@@ -219,6 +219,48 @@
     return rt.pos[0] === 1.5 && rt.pos[2] === -3.25 && rt.got[0] === true;
   }, 'JSON round-trip sin pérdida');
 
+  T('Texturas v4: materiales nuevos presentes', () => {
+    const K = NovaTex.TEX_KINDS;
+    return ['road', 'curb', 'facade', 'crowd', 'blob'].every(k => typeof K[k] === 'function');
+  }, 'road/curb/facade/crowd/blob generan');
+
+  T('Texturas v4: blob con canal alpha real', () => {
+    const N = NovaTex.makeNoise(1);
+    const d = NovaTex.TEX_KINDS.blob(N, 32);
+    return !!(d.alpha && d.alpha[0] === 0 && d.alpha[(16 * 32 + 16)] > 100);
+  }, 'borde transparente, centro opaco (sombra de contacto)');
+
+  T('Cielo procedural: uniforms compilados en el programa', () => {
+    const u = renderer.mesh.u;
+    return u.uSkyTop !== undefined && u.uSkyHor !== undefined && u.uSkyGnd !== undefined
+      && u.uCloudAmt !== undefined && u.uStarsAmt !== undefined && u.uNorOffset !== undefined;
+  }, 'skyTop/skyHor/skyGnd/clouds/stars/norOffset activos');
+
+  T('Input: fallback de teclado (evento sin code)', () => {
+    const inp = new NovaInput(document.createElement('canvas'));
+    dispatchEvent(new KeyboardEvent('keydown', { code: '', key: 'a' }));
+    inp.update();
+    const mx = inp.state.mx;
+    dispatchEvent(new KeyboardEvent('keyup', { code: '', key: 'a' }));
+    inp.update();
+    return mx === -1 && inp.state.mx === 0;
+  }, 'e.key deducido cuando code viene vacío; suelto vuelve a 0');
+
+  T('Portadas 3D: pipeline fixedSize renderiza y exporta', () => {
+    const cv = document.createElement('canvas');
+    cv.width = 64; cv.height = 64;
+    const R = new NovaCore.NovaRenderer(cv, { shadowSize: 256, preserve: true, fixedSize: true });
+    const tf = new NovaTex.TexFactory(R), gf = new NovaTex.GeoFactory(R);
+    const m = tf.get('tiles', 64, 3);
+    const n = new NovaCore.Node(gf.box(1, 1, 1, 1), { albedo: m.albedo, normal: m.normal, rough: 0.4 });
+    n.pos = [0, 0, 2.2];
+    R.camera.pos = [0, 0, 0]; R.camera.target = [0, 0, 1];
+    R.render([n], null, 0.016);
+    const url = cv.toDataURL('image/jpeg', 0.8);
+    const errs = R.glErrors();
+    return url.startsWith('data:image/jpeg') && url.length > 500 && errs === 0;
+  }, 'renderer fuera del DOM respeta tamaño fijo y exporta JPEG');
+
   /* ---------- run ---------- */
   let i = 0;
   function run() {

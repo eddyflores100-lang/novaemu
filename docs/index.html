@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NovaEmu PS5 Edition — Emulador-experiencia PS5 en tu navegador</title>
-<meta name="description" content="Motor WebGL2 con shadow mapping, texturas procedurales con normal maps, HDR + bloom, controles de baja latencia. 3 juegos 3D jugables. Inspirado en la escena PS5 de octubre-2026.">
+<title>NovaEmu PS5 Edition v4 — Emulador-experiencia PS5 en tu navegador</title>
+<meta name="description" content="Motor WebGL2 con cielo procedural (nubes FBM + estrellas), shadow mapping con normal-offset, texturas procedurales con normal maps, HDR + ACES + bloom, sombras de contacto y controles de baja latencia. 3 juegos 3D jugables con portadas renderizadas por el motor real. Inspirado en la escena PS5 de octubre-2026.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
 <link rel="stylesheet" href="site.css">
 </head>
@@ -24,13 +24,14 @@
 <section class="hero">
   <div class="hero-badge">OCTUBRE 2026 · LA OLA PS5</div>
   <h1>La generación<br>que sí puedes jugar hoy</h1>
-  <p class="lead">NovaEmu PS5 Edition es una experiencia de consola completa en tu navegador:
-  motor 3D propio con <b style="color:var(--txt)">sombras dinámicas</b>, <b style="color:var(--txt)">texturas procedurales con normal maps</b>,
-  HDR con tonemapping ACES y bloom, y <b style="color:var(--txt)">controles de baja latencia</b> por frame.
-  Sin descargas, sin plugins: WebGL2 puro.</p>
+  <p class="lead">NovaEmu PS5 Edition v4 es una experiencia de consola completa en tu navegador:
+  motor 3D propio con <b style="color:var(--txt)">cielo procedural</b> (nubes FBM, estrellas, sol HDR),
+  <b style="color:var(--txt)">sombras dinámicas con normal-offset</b>, texturas con normal maps,
+  HDR + ACES + bloom, sombras de contacto y <b style="color:var(--txt)">controles de baja latencia</b> por frame.
+  Las portadas del home las renderiza el propio motor 3D. Sin descargas: WebGL2 puro.</p>
   <div class="hero-btns">
     <a class="btn primary" href="app.html">🎮 Encender la consola</a>
-    <a class="btn ghost" href="tests.html">🧪 Ver 16/16 tests</a>
+    <a class="btn ghost" href="tests.html">🧪 Ver 24/24 tests</a>
   </div>
   <div class="hero-stats">
     <div class="hstat"><b>3</b><span>juegos 3D jugables</span></div>
@@ -46,11 +47,17 @@
   (sin copiar código de proyectos GPL). Todo corre local en tu GPU.</p>
   <div class="grid3">
     <div class="card"><div class="ico">🌗</div><h3>Shadow mapping dinámico</h3>
-      <p>Mapa de profundidad 2048px con filtrado PCF 3×3 y bias según pendiente. Los atardeceres de
-      Apex Velocity proyectan sombras largas reales de coches, edificios y farolas.</p></div>
+      <p>Mapa de profundidad 2048px, PCF 3×3, bias por pendiente + <b>normal-offset</b> y snap a texels
+      (adiós acne y shimmer). En Apex Velocity el sol bajo del atardecer proyecta sombras largas de coches,
+      edificios y gradas, con sombra de contacto bajo cada rueda.</p></div>
+    <div class="card"><div class="ico">🌤️</div><h3>Cielo procedural en shader</h3>
+      <p>Nada de gradientes planos: gradiente atmosférico + disco solar HDR + nubes FBM animadas
+      + estrellas titilantes, todo calculado por píxel en GPU. Cada juego tiene su atmósfera:
+      atardecer dorado, noche alienígena o espacio profundo.</p></div>
     <div class="card"><div class="ico">🧱</div><h3>Texturas procedurales + normal maps</h3>
-      <p>10 materiales generados en runtime (asfalto, baldosas, placas de casco, paneles hexagonales,
-      césped, mármol, neón…) con mapas de normales derivados por Sobel y anisotropía.</p></div>
+      <p>15 materiales generados en runtime: asfalto con marcas viales y desgaste de goma, bordillos
+      rojo/blanco, fachadas urbanas con ventanas encendidas, gradas con público, césped con parches
+      secos… con normales por Sobel y anisotropía 8×.</p></div>
     <div class="card"><div class="ico">🎬</div><h3>HDR + ACES + bloom</h3>
       <p>Render a HDR, tonemapping fílmico ACES, bloom real en 1/4 de resolución, viñeta, grano y
       saturación. Antialiasing MSAA 4× con resolución dinámica para PCs viejas.</p></div>
@@ -60,6 +67,10 @@
     <div class="card"><div class="ico">💾</div><h3>Save states + Rewind</h3>
       <p>Guarda tu partida en cualquier momento y rebobina el juego hasta 24 segundos atrás
       (ESC + R1) con un buffer circular de snapshots.</p></div>
+    <div class="card"><div class="ico">🖼️</div><h3>Portadas renderizadas por el motor</h3>
+      <p>Las carátulas del home no son dibujos: cada tile es un fotograma real del juego, capturado
+      por el propio NovaCore al arrancar (técnica de golden frames de Kyty, invertida: en vez de
+      comparar, exhibir).</p></div>
     <div class="card"><div class="ico">💿</div><h3>Discos .pkg</h3>
       <p>Formato propio NOVAPKG con auditoría de manifiesto: los fallos avisan claro (técnica AnyPS5)
       y el disco se instala con arrastrar y soltar.</p></div>
@@ -84,18 +95,20 @@
 
 <section class="land-sec" id="escena">
   <h2>La escena PS5 de octubre-2026 (verificada hoy)</h2>
-  <p class="sub">Los repos que inspiraron esta build, verificados vía GitHub API el 03-nov-2026. Los tres son GPL-2.0:
-  NovaEmu reimplementa conceptos, no código.</p>
+  <p class="sub">Los repos que inspiraron esta build, verificados vía GitHub API el 03-nov-2026.
+  Los emuladores son GPL-2.0: NovaEmu reimplementa conceptos, no código.</p>
   <table class="scene-table">
     <thead><tr><th>Proyecto</th><th>★</th><th>Último push</th><th>Qué hace</th><th>Técnica tomada</th></tr></thead>
     <tbody>
-      <tr><td><b>AnyPS5</b> (boykopovar)</td><td>50.692</td><td>02-nov-2026</td><td>Port automático de exes PS5 → PC (relinker)</td><td>Auditoría de manifiesto; fallar claro y temprano</td></tr>
-      <tr><td><b>KytyPS5</b></td><td>10.504</td><td>02-nov-2026</td><td>Emulador PS5 C++, 134 títulos</td><td>Golden frames por hash del framebuffer</td></tr>
-      <tr><td><b>SharpEmu</b></td><td>6.516</td><td>01-nov-2026</td><td>Emulador C#, 6 juegos jugables 60fps</td><td>Tabla de dispatch de comandos GPU; input por prioridad</td></tr>
-      <tr><td><b>REA-Prompts</b></td><td>3.472</td><td>26-oct-2026</td><td>Metodología REA (ingeniería inversa)</td><td>Evidencia → hipótesis → experimento → medición</td></tr>
+      <tr><td><b>AnyPS5</b> (boykopovar)</td><td>50.728</td><td>03-nov-2026</td><td>Port automático de exes PS5 → PC (relinker)</td><td>Auditoría de manifiesto; fallar claro y temprano</td></tr>
+      <tr><td><b>KytyPS5</b></td><td>10.521</td><td>02-nov-2026</td><td>Emulador PS5 C++, forks activos (KytyPlus)</td><td>Golden frames por hash del framebuffer</td></tr>
+      <tr><td><b>SharpEmu</b></td><td>6.519</td><td>01-nov-2026</td><td>Emulador C#, títulos jugables a 60fps</td><td>Dispatch de comandos GPU; input por prioridad</td></tr>
+      <tr><td><b>prosperity</b> (Force67)</td><td>411</td><td>29-oct-2026</td><td>LLE para PS4 & PS5</td><td>Honestidad de compatibilidad por juego</td></tr>
+      <tr><td><b>RecompStore</b> (elripalda)</td><td>327</td><td>03-nov-2026</td><td>Store de homebrew para PS5 jailbreak</td><td>Instalación de paquetes con verificación</td></tr>
+      <tr><td><b>REA-Prompts</b></td><td>3.481</td><td>26-oct-2026</td><td>Metodología REA (ingeniería inversa)</td><td>Evidencia → hipótesis → experimento → medición</td></tr>
     </tbody>
   </table>
-  <p style="color:var(--dim);font-size:13px;margin-top:16px">Fuentes de prensa de la semana: Ars Technica (1-oct), TechPowerUp (11-oct), Tom's Hardware, Videocardz, LTT (9-oct).</p>
+  <p style="color:var(--dim);font-size:13px;margin-top:16px">Fuentes de prensa de la ola: Ars Technica (1-oct), TechPowerUp (11-oct), Tom's Hardware, Videocardz, LTT (9-oct).</p>
 </section>
 
 <section class="land-sec" id="como">
@@ -109,7 +122,7 @@
 </section>
 
 <footer class="land-foot">
-  <p><b>NovaEmu PS5 Edition</b> · motor NovaCore 3.0 (WebGL2) · build 03-nov-2026</p>
+  <p><b>NovaEmu PS5 Edition</b> · motor NovaCore 4.0 (WebGL2) · build 03-nov-2026</p>
   <p style="margin-top:8px">Experiencia propia inspirada en la escena PS5. No incluye ni ejecuta ROMs con copyright.</p>
 </footer>
 

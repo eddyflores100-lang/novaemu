@@ -134,6 +134,49 @@
     S.mode = 'boot';
     lastTs = performance.now();
     rafId = requestAnimationFrame(loop);
+    generateCovers(); // portadas renderizadas por el motor real (async, no bloquea)
+  }
+
+  /* ---------- portadas 3D: se renderiza UNA escena viva de cada juego ---------- */
+  const coverCache = {};
+  async function generateCovers() {
+    for (const g of S.games) {
+      if (coverCache[g.id] !== undefined) continue;
+      let url = null;
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = 460; cv.height = 600;
+        const R = new NovaCore.NovaRenderer(cv, { bloom: true, shadowSize: 1024, preserve: true, fixedSize: true });
+        const texF = new NovaTex.TexFactory(R);
+        const geoF = new NovaTex.GeoFactory(R);
+        const stubAudio = { sfx(){}, engineStart(){}, engineStop(){}, engineUpdate(){}, musicStart(){}, stopAll(){} };
+        const stubInput = { held(){ return false; }, axis(){ return 0; }, pressed(){ return false; }, mx: 0, my: 0, snapshot(){ return {}; } };
+        const game = g.create({ renderer: R, tex: texF, geo: geoF, input: stubInput, audio: stubAudio, hud: () => {} });
+        if (g.coverPose) g.coverPose(game);
+        let nodes = game.update ? game.update(0.016) : [];
+        for (let i = 0; i < 10 && nodes; i++) nodes = game.update(0.045);
+        R.render(nodes || [], null, 0.016);
+        url = cv.toDataURL('image/jpeg', 0.86);
+        if (game.dispose) game.dispose();
+        const lc = R.gl.getExtension('WEBGL_lose_context');
+        if (lc) lc.loseContext();
+      } catch (e) { console.warn('[COVER]', g.id, e); }
+      coverCache[g.id] = url;
+      paintCovers();
+      await new Promise(r => setTimeout(r, 40)); // respira entre contextos WebGL
+    }
+  }
+  function paintCovers() {
+    document.querySelectorAll('.nv-tile').forEach(t => {
+      const g = allGames()[+t.dataset.i]; if (!g) return;
+      const url = coverCache[g.id];
+      if (url && !t.dataset.img) {
+        const img = new Image();
+        img.src = url; img.alt = g.title; img.className = 'nv-cover3d';
+        const cv = t.querySelector('canvas'); if (cv) cv.replaceWith(img);
+        t.dataset.img = '1';
+      }
+    });
   }
 
   function fatal(msg) {

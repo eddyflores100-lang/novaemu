@@ -40,13 +40,17 @@ class NovaInput {
   _bindKeyboard() {
     // preventDefault SOLO en teclas de juego para no romper la página
     const GAME_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Enter', 'Escape', 'Backspace', 'Tab', 'KeyQ', 'KeyE', 'KeyR', 'KeyF']);
+    // fallback: algunos entornos (headless, layouts raros) envían code vacío → deducir de e.key
+    const KEY_FALLBACK = { ' ': 'Space', 'Enter': 'Enter', 'Escape': 'Escape', 'Backspace': 'Backspace', 'Tab': 'Tab', 'ArrowUp': 'ArrowUp', 'ArrowDown': 'ArrowDown', 'ArrowLeft': 'ArrowLeft', 'ArrowRight': 'ArrowRight', 'Shift': 'ShiftLeft', 'w': 'KeyW', 'a': 'KeyA', 's': 'KeyS', 'd': 'KeyD', 'q': 'KeyQ', 'e': 'KeyE', 'r': 'KeyR', 'f': 'KeyF', 'i': 'KeyI', 'j': 'KeyJ', 'k': 'KeyK', 'u': 'KeyU', 'p': 'KeyP', 'x': 'KeyX', 'z': 'KeyZ', 'W': 'KeyW', 'A': 'KeyA', 'S': 'KeyS', 'D': 'KeyD', 'Q': 'KeyQ', 'E': 'KeyE', 'R': 'KeyR', 'F': 'KeyF' };
+    const codeOf = e => e.code || KEY_FALLBACK[e.key] || e.key;
     window.addEventListener('keydown', e => {
-      if (GAME_KEYS.has(e.code)) e.preventDefault();
-      this.keys.add(e.code);
+      const c = codeOf(e);
+      if (GAME_KEYS.has(c)) e.preventDefault();
+      this.keys.add(c);
       this.anyActivity = true;
     }, { passive: false });
     window.addEventListener('keyup', e => {
-      this.keys.delete(e.code);
+      this.keys.delete(codeOf(e));
     });
     window.addEventListener('blur', () => this.keys.clear());
   }

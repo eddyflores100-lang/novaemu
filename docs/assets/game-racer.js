@@ -60,52 +60,82 @@
       this.roadW = 13;
 
       /* --- materiales --- */
-      const mAsphalt = tex.get('asphalt', 256, 7);
-      const mNeon = tex.get('neon', 128, 3);
-      const mGrass = tex.get('grass', 256, 21);
-      const mConcrete = tex.get('concrete', 256, 5);
+      const mRoad = tex.get('road', 512, 7);
+      const mCurb = tex.get('curb', 256, 13);
+      const mGrass = tex.get('grass', 512, 21);
+      const mFacade = tex.get('facade', 512, 5);
       const mHull = tex.get('hull', 256, 11);
       const mTiles = tex.get('tiles', 256, 9);
+      const mCrowd = tex.get('crowd', 256, 31);
+      const mBlob = tex.get('blob', 128, 1);
 
-      /* --- cielo atardecer --- */
-      const skyGeo = geo.sphere(320, 32, 20, true);
-      const skyTex = tex.skyGradient([
-        { t: 0, c: [24, 26, 66] }, { t: 0.42, c: [86, 44, 108] },
-        { t: 0.68, c: [214, 96, 68] }, { t: 0.85, c: [252, 158, 68] }, { t: 1, c: [255, 196, 110] }
-      ]);
-      const sky = new Node(skyGeo, { albedo: skyTex, unlit: true, sky: true, emissive: [1, 1, 1], castShadow: false });
+      /* --- cielo procedural de atardecer (nubes FBM + estrellas tempranas) --- */
+      const skyGeo = geo.sphere(340, 32, 20, true);
+      const sky = new Node(skyGeo, {
+        albedo: tex.solid(255, 255, 255), unlit: true, sky: true, castShadow: false,
+        skyTop: [0.075, 0.11, 0.29], skyHor: [0.98, 0.55, 0.34], skyGnd: [0.30, 0.22, 0.20],
+        clouds: 0.62, stars: 0.42
+      });
       this.nodes.push(sky);
 
+      /* --- cordillera lejana (silueta + niebla = profundidad) --- */
+      let mseed = 777;
+      const mrnd = () => (mseed = (mseed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 15; i++) {
+        const ang = (i / 15) * Math.PI * 2 + mrnd() * 0.3;
+        const dist = 365 + mrnd() * 55;
+        const r = 42 + mrnd() * 46, h = 34 + mrnd() * 62;
+        const mtn = new Node(geo.cylinder(0.6, r, h, 7, false), { albedo: tex.solid(38, 34, 58), rough: 1, normalScale: 0.3, castShadow: false });
+        mtn.pos = [Math.cos(ang) * dist, h / 2 - 2, Math.sin(ang) * dist];
+        mtn.rot = [0, mrnd() * 3, 0];
+        mtn.scl = [1 + mrnd() * 0.6, 1, 1];
+        this.nodes.push(mtn);
+      }
+
       /* --- suelo --- */
-      const ground = new Node(geo.plane(900, 900, 1, 1, 26, true), { albedo: mGrass.albedo, normal: mGrass.normal, rough: mGrass.rough, normalScale: mGrass.normalScale, castShadow: false });
+      const ground = new Node(geo.plane(900, 900, 1, 1, 0.42, true), { albedo: mGrass.albedo, normal: mGrass.normal, rough: mGrass.rough, normalScale: mGrass.normalScale, castShadow: false });
       ground.y = -0.05;
       this.nodes.push(ground);
 
       /* --- cinta de la carretera + curbs --- */
-      this._buildRoad(mAsphalt, mNeon);
+      this._buildRoad(mRoad, mCurb);
 
-      /* --- edificios de fondo --- */
+      /* --- skyline urbano con ventanas iluminadas --- */
       let bseed = 42;
       const rnd = () => (bseed = (bseed * 16807) % 2147483647) / 2147483647;
-      for (let i = 0; i < 26; i++) {
-        // posiciones fuera de la pista
+      for (let i = 0; i < 30; i++) {
         let px, pz, ok = false, tries = 0;
         while (!ok && tries++ < 40) {
-          px = (rnd() - 0.5) * 420; pz = (rnd() - 0.5) * 420;
+          px = (rnd() - 0.5) * 430; pz = (rnd() - 0.5) * 430;
           ok = true;
-          for (const s of this.samples) if (Math.hypot(s[0] - px, s[2] - pz) < 34) { ok = false; break; }
+          for (const s of this.samples) if (Math.hypot(s[0] - px, s[2] - pz) < 36) { ok = false; break; }
         }
         if (!ok) continue;
-        const w = 8 + rnd() * 16, h = 10 + rnd() * 42, d = 8 + rnd() * 16;
-        const mat = rnd() > 0.5 ? mConcrete : mHull;
-        const b = new Node(geo.box(w, h, d, 2), { albedo: mat.albedo, normal: mat.normal, rough: mat.rough, normalScale: mat.normalScale * 0.8, tint: [0.75 + rnd() * 0.3, 0.78 + rnd() * 0.25, 0.85 + rnd() * 0.2] });
+        const w = 9 + rnd() * 15, h = 12 + rnd() * 46, d = 9 + rnd() * 15;
+        const kk = 0.72 + rnd() * 0.5;
+        const b = new Node(geo.box(w, h, d, 2.6), { albedo: mFacade.albedo, normal: mFacade.normal, rough: mFacade.rough, metal: 0.18, normalScale: mFacade.normalScale, tint: [kk * 1.0, kk * 0.99, kk * 1.06] });
         b.pos = [px, h / 2, pz];
         this.nodes.push(b);
-        // ventanas emisivas
-        const win = new Node(geo.box(w * 0.92, h * 0.7, d * 0.92, 1), { albedo: tex.solid(20, 26, 40), rough: 0.3, metal: 0.4, emissive: [0.05, 0.07, 0.12] });
-        win.pos = [px, h / 2 + 1, pz]; win.scl = [1, 1, 1.001];
-        win.castShadow = false;
-        this.nodes.push(win);
+        // baliza roja parpadeante en los más altos
+        if (h > 40) {
+          const bea = new Node(geo.box(0.5, 0.5, 0.5, 1), { albedo: tex.solid(255, 40, 40), unlit: true, emissive: [2.2, 0.16, 0.12], castShadow: false });
+          bea.pos = [px, h + 0.5, pz];
+          this.nodes.push(bea);
+          (this.beacons = this.beacons || []).push(bea);
+        }
+      }
+
+      /* --- gradas junto a la recta principal (retiradas para no tapar el horizonte) --- */
+      for (const side of [-1, 1]) {
+        const st = this.trackAt(48);
+        const stand = new Node(geo.box(22, 4.2, 6, 1.8), { albedo: mCrowd.albedo, normal: mCrowd.normal, rough: mCrowd.rough, normalScale: mCrowd.normalScale * 0.7 });
+        stand.pos = [st.p[0] + st.side[0] * side * (this.roadW / 2 + 14), 2.1, st.p[2] + st.side[2] * side * (this.roadW / 2 + 14)];
+        stand.rot = [0, Math.atan2(st.tan[0], st.tan[2]), 0];
+        this.nodes.push(stand);
+        const roof = new Node(geo.box(23, 0.4, 7.2, 1), { albedo: mHull.albedo, normal: mHull.normal, rough: mHull.rough, metal: 0.4, tint: [0.52, 0.55, 0.64] });
+        roof.pos = [stand.x + st.side[0] * side * 0.8, 5.0, stand.z + st.side[2] * side * 0.8];
+        roof.rot = [side * 0.14, stand.rot[1], 0];
+        this.nodes.push(roof);
       }
 
       /* --- arco de salida --- */
@@ -115,19 +145,19 @@
         pil.pos = [startP.p[0] + startP.side[0] * side * (this.roadW / 2 + 1.6), 5.5, startP.p[2] + startP.side[2] * side * (this.roadW / 2 + 1.6)];
         this.nodes.push(pil);
       }
-      const banner = new Node(geo.box(this.roadW + 6, 2.4, 1, 2), { albedo: tex.solid(14, 16, 26), rough: 0.5, emissive: [0.10, 0.05, 0.02] });
+      const banner = new Node(geo.box(this.roadW + 6, 2.4, 1, 2), { albedo: tex.solid(14, 16, 26), rough: 0.5, emissive: [0.42, 0.18, 0.05] });
       banner.pos = [startP.p[0], 10.4, startP.p[2]];
       banner.rot = [0, Math.atan2(startP.tan[0], startP.tan[2]), 0];
       this.nodes.push(banner);
 
-      /* --- farolas --- */
+      /* --- farolas con halo de bloom --- */
       for (let i = 0; i < this.samples.length; i += 42) {
         const sp = this.trackAt(i / this.samples.length * this.totalLen);
         const side = (i / 42) % 2 === 0 ? 1 : -1;
         const pole = new Node(geo.cylinder(0.14, 0.18, 7, 8, false), { albedo: mHull.albedo, normal: mHull.normal, rough: mHull.rough, metal: 0.5 });
         pole.pos = [sp.p[0] + sp.side[0] * side * (this.roadW / 2 + 2.4), 3.5, sp.p[2] + sp.side[2] * side * (this.roadW / 2 + 2.4)];
         this.nodes.push(pole);
-        const lamp = new Node(geo.box(0.8, 0.25, 0.8, 1), { albedo: tex.solid(255, 230, 170), unlit: true, emissive: [1, 0.92, 0.65], castShadow: false });
+        const lamp = new Node(geo.box(1.0, 0.28, 1.0, 1), { albedo: tex.solid(255, 226, 150), unlit: true, emissive: [2.6, 2.1, 1.15], castShadow: false });
         lamp.pos = [pole.x, 7.1, pole.z];
         this.nodes.push(lamp);
       }
@@ -154,13 +184,14 @@
       this.camPos = [startP.p[0], 4, startP.p[2] + 10];
       this.camTarget = [startP.p[0], 1, startP.p[2]];
 
-      /* --- luz de hora dorada (sombras largas pero visibles) --- */
+      /* --- luz de hora dorada: sol bajo = sombras largas y dramáticas --- */
       const R = env.renderer;
-      R.sun = { dir: V3.norm([-0.38, -0.72, 0.38]), color: [1.85, 1.38, 1.02], ambSky: [0.36, 0.35, 0.5], ambGround: [0.2, 0.17, 0.15], range: 46, strength: 1 };
-      R.fog = { color: [0.58, 0.45, 0.42], density: 0.0045 };
-      R.opts.exposure = 1.12; R.opts.saturation = 1.18;
+      R.sun = { dir: V3.norm([-0.45, -0.34, 0.36]), color: [2.15, 1.42, 0.92], ambSky: [0.32, 0.31, 0.48], ambGround: [0.17, 0.14, 0.12], range: 52, strength: 1 };
+      R.fog = { color: [0.60, 0.42, 0.38], density: 0.0038 };
+      R.opts.exposure = 1.14; R.opts.saturation = 1.16; R.opts.bloomAmt = 0.95;
       R.camera.fov = 62 * Math.PI / 180;
-      R.camera.far = 700;
+      R.camera.far = 900;
+      this.baseFov = R.camera.fov;
 
       this._hud();
       env.audio.sfx('count');
@@ -181,7 +212,7 @@
       return { p, tan, side: [-tan[2], 0, tan[0]] };
     }
 
-    _buildRoad(mAsphalt, mNeon) {
+    _buildRoad(mRoad, mCurb) {
       const env = this.env, S = this.samples.length, W = this.roadW;
       const mkRibbon = (off1, off2, uvScale, closed = true) => {
         const pos = [], nor = [], uv = [], idx = [];
@@ -194,7 +225,7 @@
           pos.push(sp[0] + sx * off1, 0.02, sp[2] + sz * off1);
           pos.push(sp[0] + sx * off2, 0.02, sp[2] + sz * off2);
           nor.push(0, 1, 0, 0, 1, 0);
-          const v = i * uvScale * 0.24;
+          const v = i * uvScale * 0.062; // período alineado con las marcas del asfalto
           uv.push(0, v, 1, v);
         }
         const rows = closed ? S + 1 : S;
@@ -204,11 +235,11 @@
         }
         return env.geo._upload({ count: pos.length / 3, pos, nor, uv, idx });
       };
-      // asfalto
-      const road = new Node(mkRibbon(-W / 2, W / 2, 1), { albedo: mAsphalt.albedo, normal: mAsphalt.normal, rough: mAsphalt.rough, normalScale: mAsphalt.normalScale, castShadow: false });
+      // asfalto con marcas viales horneadas
+      const road = new Node(mkRibbon(-W / 2, W / 2, 1), { albedo: mRoad.albedo, normal: mRoad.normal, rough: mRoad.rough, normalScale: mRoad.normalScale, castShadow: false });
       this.nodes.push(road);
-      // curbs neón (ligeramente elevados, emisivos suaves)
-      const curbMat = { albedo: mNeon.albedo, normal: mNeon.normal, rough: 0.4, normalScale: 0.6, emissive: [0.06, 0.18, 0.22], castShadow: false };
+      // curbs rojo/blanco de circuito
+      const curbMat = { albedo: mCurb.albedo, normal: mCurb.normal, rough: mCurb.rough, normalScale: mCurb.normalScale, castShadow: false };
       this.nodes.push(new Node(mkRibbon(W / 2, W / 2 + 0.8, 3), { ...curbMat }));
       this.nodes.push(new Node(mkRibbon(-W / 2 - 0.8, -W / 2, 3), { ...curbMat }));
     }
@@ -216,12 +247,21 @@
     _buildCar(mHull, tint, id) {
       const env = this.env, tex = env.tex, geo = env.geo;
       const nodes = [];
+      const mBlob = env.tex.get('blob', 128, 1);
       const group = new Node(geo.box(0.01, 0.01, 0.01), { albedo: tex.solid(0, 0, 0), castShadow: false });
       group.castShadow = false;
       nodes.push(group);
-      const body = new Node(geo.box(2.05, 0.62, 4.5, 2), { albedo: mHull.albedo, normal: mHull.normal, rough: 0.34, metal: 0.55, normalScale: 0.5, tint });
+      // sombra de contacto (decal multiplicativo bajo el coche)
+      const csh = new Node(env.geo.plane(3.6, 6.4, 1, 1, 1), { albedo: mBlob.albedo, normal: mBlob.normal, normalScale: 0, rough: 1, blend: true, castShadow: false });
+      csh.pos = [0, 0.045, 0];
+      nodes.push(csh); csh.parent = group;
+      const body = new Node(geo.box(2.05, 0.62, 4.5, 2), { albedo: mHull.albedo, normal: mHull.normal, rough: 0.30, metal: 0.62, normalScale: 0.5, tint });
       body.pos = [0, 0.62, 0];
       nodes.push(body); body.parent = group;
+      // franja de carreras en el capó
+      const stripe = new Node(geo.box(0.44, 0.64, 4.52, 1), { albedo: tex.solid(242, 240, 230), rough: 0.35, metal: 0.4, castShadow: false });
+      stripe.pos = [0, 0.625, 0.1];
+      nodes.push(stripe); stripe.parent = group;
       const cabin = new Node(geo.box(1.55, 0.55, 2.1, 1), { albedo: tex.solid(12, 14, 20), rough: 0.12, metal: 0.8, tint: [1.3, 1.3, 1.4] });
       cabin.pos = [0, 1.14, -0.25];
       nodes.push(cabin); cabin.parent = group;
@@ -345,7 +385,7 @@
         this._placeCar(a.car, a.s, a.lat, clamp(Math.sin(a.s * 0.05) * 0.05, -0.1, 0.1));
       }
 
-      /* --- cámara persecución --- */
+      /* --- cámara persecución con FOV reactivo a la velocidad --- */
       const sp = this.trackAt(this.s + 2);
       const back = 9.2 - Math.min(3, this.speed * 0.045);
       const desired = [sp.p[0] + sp.side[0] * this.lat - sp.tan[0] * back, 3.6 + this.speed * 0.012, sp.p[2] + sp.side[2] * this.lat - sp.tan[2] * back];
@@ -353,6 +393,14 @@
       this.camTarget = [damp(this.camTarget[0], sp.p[0] + sp.side[0] * this.lat + sp.tan[0] * 7, 9, dt), damp(this.camTarget[1], 1.1, 9, dt), damp(this.camTarget[2], sp.p[2] + sp.side[2] * this.lat + sp.tan[2] * 7, 9, dt)];
       R.camera.pos = this.camPos;
       R.camera.target = this.camTarget;
+      const fovGoal = this.baseFov + clamp(Math.abs(this.speed) / 52, 0, 1) * 10 * Math.PI / 180;
+      R.camera.fov = damp(R.camera.fov, fovGoal, 4, dt);
+
+      // balizas rojas parpadeantes
+      if (this.beacons) {
+        const on = Math.sin(this.t * 2.2) > 0.2 ? 2.4 : 0.15;
+        for (const b of this.beacons) b.mat.emissive = [on, 0.16, 0.12];
+      }
 
       this.parts.update(dt);
       this._hud();
@@ -439,6 +487,7 @@
       ['E / R1', 'Derrape'],
       ['ESC / ○', 'Pausa']
     ],
-    create(env) { return new RacerGame(env); }
+    create(env) { return new RacerGame(env); },
+    coverPose(g) { g.state = 'race'; g.speed = 40; g.s = 46; g.lat = -2.0; }
   };
 })();

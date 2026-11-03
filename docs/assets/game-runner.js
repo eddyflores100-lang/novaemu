@@ -26,13 +26,12 @@
       const mHex = tex.get('hexpanel', 256, 37);
       const mSand = tex.get('sand', 256, 39);
 
-      /* --- cielo nocturno alienígena --- */
+      /* --- cielo nocturno alienígena PROCEDURAL (estrellas + nubes tenues) --- */
       const sky = new Node(geo.sphere(300, 32, 20, true), {
-        albedo: tex.skyGradient([
-          { t: 0, c: [6, 8, 24] }, { t: 0.45, c: [22, 18, 58] },
-          { t: 0.72, c: [86, 44, 120] }, { t: 0.88, c: [200, 92, 90] }, { t: 1, c: [255, 160, 90] }
-        ]),
-        unlit: true, sky: true, emissive: [1, 1, 1], castShadow: false
+        albedo: tex.solid(255, 255, 255),
+        skyTop: [0.020, 0.026, 0.085], skyHor: [0.72, 0.30, 0.38], skyGnd: [0.10, 0.07, 0.13],
+        clouds: 0.22, stars: 0.95,
+        unlit: true, sky: true, castShadow: false
       });
       this.nodes.push(sky);
 

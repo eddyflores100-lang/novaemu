@@ -180,6 +180,7 @@ section.land-sec { padding: 90px 6vw; max-width: 1200px; margin: 0 auto; }
   box-shadow: 0 10px 34px rgba(0,0,0,0.55);
 }
 .nv-tile canvas { width: 100%; display: block; }
+.nv-tile img.nv-cover3d { width: 100%; display: block; }
 .nv-tile:hover { transform: translateY(-8px); }
 .nv-tile.focus {
   transform: scale(1.13) translateY(-10px);

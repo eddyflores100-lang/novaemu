@@ -130,11 +130,18 @@ const TEX_KINDS = {
       const i = y * S + x;
       const blades = N.noise2(x * 1.7, y * 1.7, S) * 0.5 + N.noise2(x * 3.3 + 40, y * 3.3 + 40, S) * 0.5;
       const patch = N.fbm(x / S * 4, y / S * 4, 4, 2, 0.5, 4);
-      h[i] = blades * 0.6 + patch * 0.4;
-      const g = blades * 0.5 + patch * 0.5;
-      col[i * 3] = 18 + g * 26; col[i * 3 + 1] = 44 + g * 54; col[i * 3 + 2] = 16 + g * 20;
+      const dry = N.fbm(x / S * 2.2 + 7.3, y / S * 2.2 + 7.3, 3, 2, 0.5, 2.2);
+      const clump = N.fbm(x / S * 9, y / S * 9, 3, 2, 0.5, 9);
+      h[i] = blades * 0.55 + patch * 0.25 + clump * 0.2;
+      // césped natural: verde apagado con parches secos amarillentos y zonas oscuras
+      const g = blades * 0.55 + patch * 0.45;
+      let r = 34 + g * 30, gg = 66 + g * 52, b = 24 + g * 22;
+      const dk = dry * dry * 0.55 + clump * 0.12;
+      r = r + (142 - r) * dk * 0.5; gg = gg + (128 - gg) * dk * 0.42; b = b + (66 - b) * dk * 0.4;
+      const dark = 1 - clump * 0.22;
+      col[i * 3] = r * dark; col[i * 3 + 1] = gg * dark; col[i * 3 + 2] = b * dark;
     }
-    return { h, col, rough: 0.95, normalScale: 0.7 };
+    return { h, col, rough: 0.95, normalScale: 0.85 };
   },
   sand(N, S) {
     const h = new Float32Array(S * S), col = new Float32Array(S * S * 3);
@@ -195,6 +202,116 @@ const TEX_KINDS = {
       }
     }
     return { h, col, rough: 0.35, normalScale: 0.9, emissiveBoost: true };
+  },
+  road(N, S) { // asfalto de circuito con marcas viales horneadas (u=ancho, v=largo)
+    const h = new Float32Array(S * S), col = new Float32Array(S * S * 3);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = y * S + x;
+      const u = x / S, v = y / S;
+      const grit = N.noise2(x * 0.9, y * 0.9, S);
+      const base = N.fbm(x / S * 8, y / S * 8, 5, 2.1, 0.55, 8);
+      h[i] = base * 0.72 + grit * 0.28;
+      const g = 46 + base * 40 + grit * 22;
+      let r = g * 0.97, gg = g, b2 = g * 1.06;
+      // desgaste: dos franjas oscuras donde ruedan los coches (aceite + goma)
+      const dCenter = Math.abs(u - 0.28), dCenter2 = Math.abs(u - 0.72);
+      const wear = Math.max(clamp01(1 - dCenter / 0.10), clamp01(1 - dCenter2 / 0.10));
+      const wk = wear * 0.16;
+      r *= 1 - wk; gg *= 1 - wk; b2 *= 1 - wk;
+      // línea blanca continua en los bordes (u≈0.055 y 0.945)
+      const eu = Math.min(u, 1 - u);
+      const lineW = 0.0085 + grit * 0.002;
+      if (Math.abs(eu - 0.055) < lineW && grit < 0.86) {
+        const k = 0.82 + grit * 0.15;
+        r = 235 * k; gg = 232 * k; b2 = 222 * k;
+      }
+      // línea central discontinua (3 ciclos por tile)
+      if (Math.abs(u - 0.5) < 0.0075 && (v * 3) % 1 < 0.55 && grit < 0.88) {
+        r = 240; gg = 238; b2 = 228;
+      }
+      col[i * 3] = r; col[i * 3 + 1] = gg; col[i * 3 + 2] = b2;
+    }
+    return { h, col, rough: 0.9, normalScale: 0.8 };
+  },
+  curb(N, S) { // bordillo rojo/blanco de circuito, rayas a lo largo de v
+    const h = new Float32Array(S * S), col = new Float32Array(S * S * 3);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = y * S + x;
+      const v = y / S;
+      const wear = N.fbm(x / S * 7, y / S * 7, 4, 2, 0.55, 7);
+      h[i] = wear * 0.35 + 0.45;
+      const red = ((v * 2.5) % 1) < 0.5;
+      const k = 0.78 + wear * 0.22;
+      if (red) { col[i * 3] = 196 * k; col[i * 3 + 1] = 44 * k; col[i * 3 + 2] = 38 * k; }
+      else { col[i * 3] = 238 * k; col[i * 3 + 1] = 234 * k; col[i * 3 + 2] = 226 * k; }
+    }
+    return { h, col, rough: 0.62, normalScale: 0.75 };
+  },
+  facade(N, S) { // fachada urbana de noche: ventanales, algunos iluminados (bloom)
+    const h = new Float32Array(S * S), col = new Float32Array(S * S * 3);
+    const CW = S / 6, CH = S / 8;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = y * S + x;
+      const cx = Math.floor(x / CW), cy = Math.floor(y / CH);
+      const fx = x - cx * CW, fy = y - cy * CH;
+      const jit = N.noise2(cx * 3.71 + 0.5, cy * 7.93 + 0.5, 64);
+      const mx = CW * 0.20, my = CH * 0.22;
+      const inWin = fx > mx && fx < CW - mx && fy > my && fy < CH - my;
+      const base = N.fbm(x / S * 5, y / S * 5, 4, 2, 0.5, 5);
+      h[i] = inWin ? 0.25 : 0.72 + base * 0.12;
+      if (inWin) {
+        const lit = jit > 0.60;
+        if (lit) {
+          const warm = N.noise2(cx * 1.31, cy * 5.17, 64) > 0.45;
+          const kk = 0.72 + jit * 0.28;
+          if (warm) { col[i * 3] = 255 * kk; col[i * 3 + 1] = 208 * kk; col[i * 3 + 2] = 138 * kk; }
+          else { col[i * 3] = 172 * kk; col[i * 3 + 1] = 216 * kk; col[i * 3 + 2] = 255 * kk; }
+        } else {
+          // cristal oscuro con reflejo vertical
+          const refl = 1 - fy / CH;
+          col[i * 3] = 16 + refl * 26; col[i * 3 + 1] = 24 + refl * 36; col[i * 3 + 2] = 42 + refl * 52;
+        }
+      } else {
+        // pilastra/piso: banda inferior del cell sombreada
+        const band = fy < CH * 0.13 ? 0.72 : 1.0;
+        const g = (74 + base * 26) * band;
+        col[i * 3] = g * 0.98; col[i * 3 + 1] = g * 0.99; col[i * 3 + 2] = g * 1.05;
+      }
+    }
+    return { h, col, rough: 0.5, normalScale: 1.05 };
+  },
+  crowd(N, S) { // gradas con público (puntitos de colores sobre fondo oscuro)
+    const h = new Float32Array(S * S), col = new Float32Array(S * S * 3);
+    const PAL = [[188, 70, 62], [78, 112, 196], [206, 160, 66], [186, 186, 192], [104, 168, 116], [176, 104, 188]];
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = y * S + x;
+      const row = Math.floor(y / (S / 12));
+      const px = Math.floor(x / 4), py = row;
+      const who = N.noise2(px * 12.9 + py * 3.1, py * 17.7, 256);
+      const seat = N.noise2(px * 1.7, py * 0.9, 256);
+      h[i] = who * 0.5 + seat * 0.2;
+      if (who > 0.40) {
+        const c = PAL[(px + py * 3) % PAL.length];
+        const k = 0.50 + who * 0.32;
+        col[i * 3] = c[0] * k; col[i * 3 + 1] = c[1] * k; col[i * 3 + 2] = c[2] * k;
+      } else {
+        const g = 34 + seat * 16;
+        col[i * 3] = g; col[i * 3 + 1] = g * 1.02; col[i * 3 + 2] = g * 1.1;
+      }
+    }
+    return { h, col, rough: 0.9, normalScale: 0.6 };
+  },
+  blob(N, S) { // sombra de contacto: disco negro radial con alpha real (usar con blend)
+    const h = new Float32Array(S * S), col = new Float32Array(S * S * 3), alpha = new Float32Array(S * S);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = y * S + x;
+      const dx = (x / S - 0.5) * 2, dy = (y / S - 0.5) * 2;
+      const d = Math.hypot(dx, dy);
+      const a = clamp01(1 - d) ;
+      alpha[i] = Math.pow(a, 1.6) * 185;
+      h[i] = 0; col[i * 3] = 0; col[i * 3 + 1] = 0; col[i * 3 + 2] = 0;
+    }
+    return { h, col, rough: 1, normalScale: 0, alpha };
   }
 };
 
@@ -243,22 +360,28 @@ class TexFactory {
     if (this.cache[key]) return this.cache[key];
     const def = TEX_KINDS[kind]; if (!def) throw new Error('TEX_KIND_UNKNOWN:' + kind);
     const N = makeNoise(seed);
-    const { h, col, rough, normalScale } = def(N, S);
+    const { h, col, rough, normalScale, alpha } = def(N, S);
     const albedo = new Uint8Array(S * S * 4);
     for (let i = 0; i < S * S; i++) {
       albedo[i * 4] = clamp01(col[i * 3] / 255) * 255;
       albedo[i * 4 + 1] = clamp01(col[i * 3 + 1] / 255) * 255;
       albedo[i * 4 + 2] = clamp01(col[i * 3 + 2] / 255) * 255;
-      albedo[i * 4 + 3] = 255;
+      albedo[i * 4 + 3] = alpha ? alpha[i] : 255;
     }
-    const normal = heightToNormal(h, S, 1);
+    const normal = alpha ? null : heightToNormal(h, S, 1);
     const set = {
-      albedo: { tex: this._upload(albedo, S), w: S, h: S },
-      normal: { tex: this._upload(normal, S), w: S, h: S },
+      albedo: { tex: this._upload(albedo, S, !alpha), w: S, h: S },
+      normal: alpha ? this.flatNormal() : { tex: this._upload(normal, S), w: S, h: S },
       rough, normalScale
     };
     this.cache[key] = set;
     return set;
+  }
+  flatNormal() {
+    if (this._flat) return this._flat;
+    const t = this._upload(new Uint8Array([128, 128, 255, 255]), 1);
+    this._flat = { tex: t, w: 1, h: 1 };
+    return this._flat;
   }
   solid(r, g, b, a = 255) {
     const key = `solid_${r}_${g}_${b}_${a}`;
